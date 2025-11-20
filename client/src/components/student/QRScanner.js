@@ -230,56 +230,24 @@ const QRScanner = () => {
         qrReaderElement.innerHTML = '';
       }
       
-      // Try to get available cameras first to select the best one
-      let cameraId = null;
-      try {
-        const devices = await Html5Qrcode.getCameras();
-        if (devices && devices.length > 0) {
-          // Prefer back camera (environment) for QR scanning
-          const backCamera = devices.find(device => 
-            device.label.toLowerCase().includes('back') || 
-            device.label.toLowerCase().includes('rear') ||
-            device.label.toLowerCase().includes('environment')
-          );
-          cameraId = backCamera ? backCamera.id : devices[0].id;
-        }
-      } catch (err) {
-        // If we can't get camera list, we'll use facingMode instead
-        console.log('Could not enumerate cameras, using facingMode');
-      }
-      
       // Create scanner instance
       scannerRef.current = new Html5Qrcode('qr-reader');
       
-      // Start scanner with best available option
+      // Start scanner - try back camera first (best for QR scanning)
+      // Use facingMode directly - this requests permission automatically
       try {
-        if (cameraId) {
-          // Use specific camera ID if available
-          await scannerRef.current.start(
-            cameraId,
-            { 
-              fps: 10, 
-              qrbox: { width: 250, height: 250 }, 
-              aspectRatio: 1.0,
-              disableFlip: false
-            },
-            handleScan,
-            handleError
-          );
-        } else {
-          // Fallback to facingMode if camera ID not available
-          await scannerRef.current.start(
-            { facingMode: 'environment' },
-            { 
-              fps: 10, 
-              qrbox: { width: 250, height: 250 }, 
-              aspectRatio: 1.0,
-              disableFlip: false
-            },
-            handleScan,
-            handleError
-          );
-        }
+        // Try back camera (environment) first - most common for mobile QR scanning
+        await scannerRef.current.start(
+          { facingMode: 'environment' },
+          { 
+            fps: 10, 
+            qrbox: { width: 250, height: 250 }, 
+            aspectRatio: 1.0,
+            disableFlip: false
+          },
+          handleScan,
+          handleError
+        );
         
         // Success - clear errors and finish initialization
         setCameraError(null);
@@ -287,8 +255,12 @@ const QRScanner = () => {
         isInitializingRef.current = false;
         return;
       } catch (startErr) {
-        // If exact environment camera fails, try without exact constraint
-        if (cameraId || startErr.message.includes('environment')) {
+        // If back camera fails, try front camera as fallback
+        const errorMsg = startErr?.message || startErr?.name || '';
+        
+        // Only try front camera if it's not a permission error
+        // Permission errors should be shown to the user
+        if (!errorMsg.includes('NotAllowedError') && !errorMsg.includes('Permission denied') && !errorMsg.toLowerCase().includes('permission')) {
           try {
             // Clean up failed attempt
             if (scannerRef.current) {
@@ -304,10 +276,10 @@ const QRScanner = () => {
               qrReaderElement.innerHTML = '';
             }
             
-            // Try general environment (back camera)
+            // Try front camera (user-facing)
             scannerRef.current = new Html5Qrcode('qr-reader');
             await scannerRef.current.start(
-              { facingMode: 'environment' },
+              { facingMode: 'user' },
               { 
                 fps: 10, 
                 qrbox: { width: 250, height: 250 }, 
@@ -322,83 +294,12 @@ const QRScanner = () => {
             isInitializingRef.current = false;
             return;
           } catch (err2) {
-            // Continue to next fallback
+            // Both cameras failed - re-throw original error
+            throw startErr;
           }
-        }
-        
-        // Try user-facing camera (front camera)
-        try {
-          if (scannerRef.current) {
-            try {
-              await scannerRef.current.stop();
-              scannerRef.current.clear();
-            } catch (_) {}
-            scannerRef.current = null;
-          }
-          
-          const qrReaderElement = document.getElementById('qr-reader');
-          if (qrReaderElement) {
-            qrReaderElement.innerHTML = '';
-          }
-          
-          scannerRef.current = new Html5Qrcode('qr-reader');
-          await scannerRef.current.start(
-            { facingMode: 'user' },
-            { 
-              fps: 10, 
-              qrbox: { width: 250, height: 250 }, 
-              aspectRatio: 1.0,
-              disableFlip: false
-            },
-            handleScan,
-            handleError
-          );
-          setCameraError(null);
-          setInitializing(false);
-          isInitializingRef.current = false;
-          return;
-        } catch (err3) {
-          // Last resort: try any available camera
-          try {
-            const devices = await Html5Qrcode.getCameras();
-            if (devices && devices.length > 0) {
-              if (scannerRef.current) {
-                try {
-                  await scannerRef.current.stop();
-                  scannerRef.current.clear();
-                } catch (_) {}
-                scannerRef.current = null;
-              }
-              
-              const qrReaderElement = document.getElementById('qr-reader');
-              if (qrReaderElement) {
-                qrReaderElement.innerHTML = '';
-              }
-              
-              scannerRef.current = new Html5Qrcode('qr-reader');
-              await scannerRef.current.start(
-                devices[0].id,
-                { 
-                  fps: 10, 
-                  qrbox: { width: 250, height: 250 }, 
-                  aspectRatio: 1.0,
-                  disableFlip: false
-                },
-                handleScan,
-                handleError
-              );
-              setCameraError(null);
-              setInitializing(false);
-              isInitializingRef.current = false;
-              return;
-            }
-          } catch (finalErr) {
-            // All attempts failed
-            throw finalErr;
-          }
-          
-          // No cameras found
-          throw new Error('No camera devices found');
+        } else {
+          // Permission error - throw it so user sees the error message
+          throw startErr;
         }
       }
     } catch (error) {
