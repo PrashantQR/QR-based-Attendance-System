@@ -40,41 +40,56 @@ const QRScanner = () => {
   };
 
   const handleError = (err) => {
-    // html5-qrcode emits frequent non-fatal scan errors; throttle and only surface fatal cases
-    const errString = typeof err === 'string' ? err : (err?.message || '');
+    // html5-qrcode emits frequent non-fatal scan errors; only handle fatal errors
+    const errString = typeof err === 'string' ? err : (err?.message || err?.name || '');
     const fatalHints = [
       'NotAllowedError', // permissions denied
       'NotFoundError',   // no camera
       'NotReadableError',
       'OverconstrainedError',
       'StreamApiNotSupportedError',
-      'InsecureContextError'
+      'InsecureContextError',
+      'Permission denied',
+      'permission'
     ];
 
-    if (fatalHints.some(h => errString.includes(h))) {
-      let errorMessage = 'Unable to access camera. ';
-      if (errString.includes('NotAllowedError')) {
-        errorMessage += 'Please allow camera permissions in your browser settings and try again.';
+    // Only handle fatal errors - ignore common decode errors
+    if (fatalHints.some(h => errString.toLowerCase().includes(h.toLowerCase()))) {
+      let errorMessage = '';
+      
+      if (errString.includes('NotAllowedError') || errString.toLowerCase().includes('permission')) {
+        errorMessage = 'Camera permission denied. ';
+        if (/Android/i.test(navigator.userAgent)) {
+          errorMessage += 'Tap the camera icon 🔒 in your browser address bar and select "Allow".';
+        } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+          errorMessage += 'Go to iPhone Settings → Safari → Camera → Allow.';
+        } else {
+          errorMessage += 'Please allow camera access in your browser settings.';
+        }
       } else if (errString.includes('NotFoundError')) {
-        errorMessage += 'No camera found on this device.';
+        errorMessage = 'No camera found on this device. Please use a device with a camera.';
       } else if (errString.includes('NotReadableError')) {
-        errorMessage += 'Camera is being used by another application.';
+        errorMessage = 'Camera is being used by another application. Please close other apps using the camera.';
       } else if (errString.includes('InsecureContextError')) {
-        errorMessage += 'Camera access requires HTTPS connection.';
+        errorMessage = 'Camera access requires HTTPS connection. Please ensure the URL starts with https://';
       } else {
-        errorMessage += 'Please check your camera permissions and try again.';
+        errorMessage = 'Unable to access camera. Please check your camera permissions and try again.';
       }
       
       setCameraError(errorMessage);
       toast.error(errorMessage);
       setScanning(false);
       try {
-        scannerRef.current?.stop();
+        if (scannerRef.current) {
+          scannerRef.current.stop().then(() => {
+            scannerRef.current.clear();
+          }).catch(() => {});
+        }
       } catch (_) {}
       return;
     }
 
-    // Ignore non-fatal decode errors to avoid spamming the UI
+    // Ignore non-fatal decode errors (these are normal during scanning)
   };
 
   const getCurrentLocation = () => {
@@ -176,42 +191,6 @@ const QRScanner = () => {
     return true;
   };
 
-  const requestCameraPermission = async () => {
-    try {
-      // Request camera permission explicitly
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      // Stop the stream immediately - we just needed to request permission
-      stream.getTracks().forEach(track => track.stop());
-      return true;
-    } catch (err) {
-      const errorMsg = err?.message || err?.name || 'Unknown error';
-      let userMessage = 'Camera permission denied. ';
-      
-      if (errorMsg.includes('NotAllowedError') || errorMsg.includes('Permission denied')) {
-        userMessage += 'Please allow camera permissions. ';
-        if (/Android/i.test(navigator.userAgent)) {
-          userMessage += 'On Android: Tap the camera icon in your address bar, then select "Allow".';
-        } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-          userMessage += 'On iOS: Go to Settings → Safari → Camera → Allow.';
-        } else {
-          userMessage += 'Check your browser\'s site settings and allow camera access.';
-        }
-      } else if (errorMsg.includes('NotFoundError') || errorMsg.includes('No camera')) {
-        userMessage = 'No camera found on this device. Please use a device with a camera.';
-      } else if (errorMsg.includes('NotReadableError')) {
-        userMessage = 'Camera is being used by another application. Please close other apps using the camera and try again.';
-      } else if (errorMsg.includes('InsecureContextError')) {
-        userMessage = 'Camera access requires HTTPS connection. Please ensure you\'re accessing the site via HTTPS.';
-      } else {
-        userMessage += 'Please check your camera permissions in browser settings.';
-      }
-      
-      setCameraError(userMessage);
-      toast.error(userMessage);
-      return false;
-    }
-  };
-
   const startScanner = async () => {
     setScanning(true);
     setResult(null);
@@ -220,49 +199,55 @@ const QRScanner = () => {
     // Check camera support first
     const isSupported = await checkCameraSupport();
     if (!isSupported) {
-      return;
-    }
-    
-    // Request camera permission explicitly
-    const hasPermission = await requestCameraPermission();
-    if (!hasPermission) {
       setScanning(false);
       return;
     }
     
-    setTimeout(async () => {
-      try {
-        if (scannerRef.current) {
-          try {
-            await scannerRef.current.stop();
-            scannerRef.current.clear();
-          } catch (_) {}
-        }
-        
-        // Clean the previous scanner div
-        const qrReaderElement = document.getElementById('qr-reader');
-        if (qrReaderElement) {
-          qrReaderElement.innerHTML = '';
-        }
-        
-        // Instantiate and start on the back camera (environment)
-        scannerRef.current = new Html5Qrcode('qr-reader');
-        await scannerRef.current.start(
-          { facingMode: { exact: 'environment' } },
-          { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
-          handleScan,
-          handleError
-        );
-        // Clear any previous errors if scanning started successfully
-        setCameraError(null);
-      } catch (e) {
-        // Fallback to any available camera if exact environment is not available
+    // Let Html5Qrcode handle permission request directly (don't pre-request)
+    // This avoids double permission requests which can cause issues
+    try {
+      // Clean up any existing scanner
+      if (scannerRef.current) {
+        try {
+          await scannerRef.current.stop();
+          scannerRef.current.clear();
+        } catch (_) {}
+        scannerRef.current = null;
+      }
+      
+      // Clean the previous scanner div
+      const qrReaderElement = document.getElementById('qr-reader');
+      if (qrReaderElement) {
+        qrReaderElement.innerHTML = '';
+      }
+      
+      // Instantiate and start - this will request permission automatically
+      scannerRef.current = new Html5Qrcode('qr-reader');
+      await scannerRef.current.start(
+        { facingMode: { exact: 'environment' } },
+        { 
+          fps: 10, 
+          qrbox: { width: 250, height: 250 }, 
+          aspectRatio: 1.0,
+          disableFlip: false
+        },
+        handleScan,
+        handleError
+      );
+      // Clear any previous errors if scanning started successfully
+      setCameraError(null);
+    } catch (e) {
+      const errorMsg = e?.message || e?.name || 'Unknown error';
+      
+      // If exact back camera fails, try general environment camera
+      if (errorMsg.includes('environment') || errorMsg.includes('exact')) {
         try {
           if (scannerRef.current) {
             try {
               await scannerRef.current.stop();
               scannerRef.current.clear();
             } catch (_) {}
+            scannerRef.current = null;
           }
           
           const qrReaderElement = document.getElementById('qr-reader');
@@ -273,62 +258,115 @@ const QRScanner = () => {
           scannerRef.current = new Html5Qrcode('qr-reader');
           await scannerRef.current.start(
             { facingMode: 'environment' },
-            { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+            { 
+              fps: 10, 
+              qrbox: { width: 250, height: 250 }, 
+              aspectRatio: 1.0,
+              disableFlip: false
+            },
             handleScan,
             handleError
           );
           setCameraError(null);
+          return;
         } catch (err2) {
-          // Try user-facing camera as last resort
+          // Fall through to next try
+        }
+      }
+      
+      // Try user-facing camera as fallback
+      try {
+        if (scannerRef.current) {
           try {
-            if (scannerRef.current) {
-              try {
-                await scannerRef.current.stop();
-                scannerRef.current.clear();
-              } catch (_) {}
-            }
-            
-            const qrReaderElement = document.getElementById('qr-reader');
-            if (qrReaderElement) {
-              qrReaderElement.innerHTML = '';
-            }
-            
-            scannerRef.current = new Html5Qrcode('qr-reader');
+            await scannerRef.current.stop();
+            scannerRef.current.clear();
+          } catch (_) {}
+          scannerRef.current = null;
+        }
+        
+        const qrReaderElement = document.getElementById('qr-reader');
+        if (qrReaderElement) {
+          qrReaderElement.innerHTML = '';
+        }
+        
+        scannerRef.current = new Html5Qrcode('qr-reader');
+        await scannerRef.current.start(
+          { facingMode: 'user' },
+          { 
+            fps: 10, 
+            qrbox: { width: 250, height: 250 }, 
+            aspectRatio: 1.0,
+            disableFlip: false
+          },
+          handleScan,
+          handleError
+        );
+        setCameraError(null);
+      } catch (err3) {
+        // Try any available camera device
+        try {
+          if (scannerRef.current) {
+            try {
+              await scannerRef.current.stop();
+              scannerRef.current.clear();
+            } catch (_) {}
+            scannerRef.current = null;
+          }
+          
+          const qrReaderElement = document.getElementById('qr-reader');
+          if (qrReaderElement) {
+            qrReaderElement.innerHTML = '';
+          }
+          
+          scannerRef.current = new Html5Qrcode('qr-reader');
+          // Get available cameras and use the first one
+          const devices = await Html5Qrcode.getCameras();
+          if (devices && devices.length > 0) {
             await scannerRef.current.start(
-              { facingMode: 'user' },
-              { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+              devices[0].id,
+              { 
+                fps: 10, 
+                qrbox: { width: 250, height: 250 }, 
+                aspectRatio: 1.0,
+                disableFlip: false
+              },
               handleScan,
               handleError
             );
             setCameraError(null);
-          } catch (err3) {
-            const errorMsg = err3?.message || err3?.name || 'Unknown error';
-            let userMessage = 'Unable to access camera. ';
-            
-            if (errorMsg.includes('NotAllowedError') || errorMsg.includes('Permission denied')) {
-              userMessage += 'Please allow camera permissions. ';
-              if (/Android/i.test(navigator.userAgent)) {
-                userMessage += 'On Android: Tap the camera icon in your address bar → Allow.';
-              } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-                userMessage += 'On iOS: Settings → Safari → Camera → Allow.';
-              } else {
-                userMessage += 'Check browser site settings and allow camera access.';
-              }
-            } else if (errorMsg.includes('NotFoundError') || errorMsg.includes('No camera')) {
-              userMessage = 'No camera found on this device.';
-            } else if (errorMsg.includes('NotReadableError')) {
-              userMessage = 'Camera is being used by another app. Close other camera apps and try again.';
-            } else {
-              userMessage += 'Please check camera permissions and try again.';
-            }
-            
-            setCameraError(userMessage);
-            toast.error(userMessage);
-            setScanning(false);
+          } else {
+            throw new Error('No camera devices found');
           }
+        } catch (finalErr) {
+          // All attempts failed - show error
+          const finalErrorMsg = finalErr?.message || finalErr?.name || errorMsg || 'Unknown error';
+          let userMessage = 'Unable to access camera. ';
+          
+          if (finalErrorMsg.includes('NotAllowedError') || finalErrorMsg.includes('Permission denied') || finalErrorMsg.includes('permission')) {
+            userMessage = 'Camera permission denied. ';
+            if (/Android/i.test(navigator.userAgent)) {
+              userMessage += 'Tap the camera icon 🔒 in your browser address bar and select "Allow".';
+            } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+              userMessage += 'Go to iPhone Settings → Safari → Camera → Allow.';
+            } else {
+              userMessage += 'Please allow camera access in your browser settings.';
+            }
+          } else if (finalErrorMsg.includes('NotFoundError') || finalErrorMsg.includes('No camera') || finalErrorMsg.includes('no camera')) {
+            userMessage = 'No camera found on this device. Please use a device with a camera.';
+          } else if (finalErrorMsg.includes('NotReadableError') || finalErrorMsg.includes('busy')) {
+            userMessage = 'Camera is being used by another app. Please close other apps using the camera and try again.';
+          } else if (finalErrorMsg.includes('InsecureContextError') || finalErrorMsg.includes('HTTPS')) {
+            userMessage = 'Camera access requires HTTPS. Please ensure the URL starts with https://';
+          } else {
+            userMessage += 'Please check your camera permissions and try again.';
+          }
+          
+          setCameraError(userMessage);
+          toast.error(userMessage);
+          setScanning(false);
         }
       }
-    }, 100);
+    }
   };
 
   return (
