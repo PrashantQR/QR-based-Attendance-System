@@ -259,6 +259,8 @@ const QRScanner = () => {
       
       // Start scanner - try back camera first (best for QR scanning)
       // Use facingMode directly - this requests permission automatically
+      let cameraStarted = false;
+      
       try {
         // Try back camera (environment) first - most common for mobile QR scanning
         await scannerRef.current.start(
@@ -272,154 +274,153 @@ const QRScanner = () => {
           handleScan,
           handleError
         );
+        cameraStarted = true;
+      } catch (startErr) {
+        const errorMsg = startErr?.message || startErr?.name || '';
         
-        // Success - clear errors and finish initialization
+        // Wait a moment and check if camera actually started despite the error
+        // Sometimes Html5Qrcode reports errors but camera still works
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const qrReaderCheck = document.getElementById('qr-reader');
+        if (qrReaderCheck) {
+          const videoElement = qrReaderCheck.querySelector('video');
+          if (videoElement) {
+            // Check multiple indicators that camera is working
+            const isPlaying = !videoElement.paused && videoElement.readyState >= 2;
+            const hasStream = videoElement.srcObject !== null;
+            
+            if (isPlaying || hasStream || videoElement.readyState > 0) {
+              // Camera is actually working! Success
+              cameraStarted = true;
+            }
+          }
+        }
+        
+        // If camera didn't start and it's not a permission error, try front camera
+        if (!cameraStarted) {
+          const isPermissionError = errorMsg.includes('NotAllowedError') || 
+                                    errorMsg.includes('Permission denied') || 
+                                    errorMsg.includes('403');
+          
+          if (!isPermissionError) {
+            // Clean up and try front camera
+            try {
+              if (scannerRef.current) {
+                try {
+                  await scannerRef.current.stop();
+                  scannerRef.current.clear();
+                } catch (_) {}
+                scannerRef.current = null;
+              }
+              
+              const qrReaderElement = document.getElementById('qr-reader');
+              if (qrReaderElement) {
+                qrReaderElement.innerHTML = '';
+              }
+              
+              // Try front camera (user-facing)
+              scannerRef.current = new Html5Qrcode('qr-reader');
+              await scannerRef.current.start(
+                { facingMode: 'user' },
+                { 
+                  fps: 10, 
+                  qrbox: { width: 250, height: 250 }, 
+                  aspectRatio: 1.0,
+                  disableFlip: false
+                },
+                handleScan,
+                handleError
+              );
+              
+              // Wait and verify it's actually working
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              const qrReaderCheck2 = document.getElementById('qr-reader');
+              if (qrReaderCheck2) {
+                const videoElement2 = qrReaderCheck2.querySelector('video');
+                if (videoElement2 && (!videoElement2.paused || videoElement2.readyState > 0 || videoElement2.srcObject)) {
+                  cameraStarted = true;
+                }
+              }
+              
+              if (!cameraStarted) {
+                throw startErr; // Re-throw if front camera also failed
+              }
+            } catch (err2) {
+              // Front camera also failed - throw original error
+              throw startErr;
+            }
+          } else {
+            // Permission error - throw it
+            throw startErr;
+          }
+        }
+      }
+      
+      // If we get here and camera started, success!
+      if (cameraStarted) {
         setCameraError(null);
         setInitializing(false);
         isInitializingRef.current = false;
         return;
-      } catch (startErr) {
-        // If back camera fails, try front camera as fallback
-        const errorMsg = startErr?.message || startErr?.name || '';
-        
-        // Check if scanner actually started successfully despite the error
-        // Sometimes Html5Qrcode throws errors but camera still starts
-        // Check if video element exists in the scanner div
-        await new Promise(resolve => setTimeout(resolve, 500)); // Wait a bit
-        const qrReaderElement = document.getElementById('qr-reader');
-        if (qrReaderElement && scannerRef.current) {
-          try {
-            // Check if video element exists (indicates camera is actually running)
-            const videoElement = qrReaderElement.querySelector('video');
-            if (videoElement && videoElement.readyState > 0) {
-              // Camera is actually working! Clear errors
-              setCameraError(null);
-              setInitializing(false);
-              isInitializingRef.current = false;
-              return;
-            }
-          } catch (_) {
-            // Scanner check failed, continue with fallback
-          }
-        }
-        
-        // Only try front camera if it's clearly not a permission error
-        const isPermissionError = errorMsg.includes('NotAllowedError') || 
-                                  errorMsg.includes('Permission denied') || 
-                                  errorMsg.toLowerCase().includes('permission') ||
-                                  errorMsg.includes('403');
-        
-        if (!isPermissionError) {
-          try {
-            // Clean up failed attempt
-            if (scannerRef.current) {
-              try {
-                await scannerRef.current.stop();
-                scannerRef.current.clear();
-              } catch (_) {}
-              scannerRef.current = null;
-            }
-            
-            const qrReaderElement = document.getElementById('qr-reader');
-            if (qrReaderElement) {
-              qrReaderElement.innerHTML = '';
-            }
-            
-            // Try front camera (user-facing)
-            scannerRef.current = new Html5Qrcode('qr-reader');
-            await scannerRef.current.start(
-              { facingMode: 'user' },
-              { 
-                fps: 10, 
-                qrbox: { width: 250, height: 250 }, 
-                aspectRatio: 1.0,
-                disableFlip: false
-              },
-              handleScan,
-              handleError
-            );
-            
-            // Wait and check if it's actually working
-            await new Promise(resolve => setTimeout(resolve, 500));
-            const qrReaderElement2 = document.getElementById('qr-reader');
-            if (qrReaderElement2 && scannerRef.current) {
-              try {
-                // Check if video element exists (indicates camera is actually running)
-                const videoElement = qrReaderElement2.querySelector('video');
-                if (videoElement && videoElement.readyState > 0) {
-                  // Camera is actually working!
-                  setCameraError(null);
-                  setInitializing(false);
-                  isInitializingRef.current = false;
-                  return;
-                }
-              } catch (_) {
-                // Continue to error handling
-              }
-            }
-            
-            // If we get here, both attempts failed
-            throw startErr;
-          } catch (err2) {
-            // Both cameras failed - check if it's actually a permission issue
-            const err2Msg = err2?.message || err2?.name || errorMsg;
-            if (err2Msg.includes('NotAllowedError') || err2Msg.includes('Permission denied') || err2Msg.toLowerCase().includes('permission')) {
-              throw err2; // Show permission error
-            }
-            throw startErr; // Re-throw original error
-          }
-        } else {
-          // Permission error - show to user
-          throw startErr;
-        }
       }
     } catch (error) {
-      // Handle all errors - but only show if scanner is definitely not working
-      const errorMsg = error?.message || error?.name || 'Unknown error';
+      // Wait longer to verify if camera is actually working
+      // Sometimes errors are thrown but camera still starts
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Double-check if scanner is actually running despite the error
-      // Sometimes errors occur but camera still works
-      if (scannerRef.current) {
+      // Final check - verify camera is actually not working
+      let cameraIsWorking = false;
+      const qrReaderFinalCheck = document.getElementById('qr-reader');
+      if (qrReaderFinalCheck && scannerRef.current) {
         try {
-          await new Promise(resolve => setTimeout(resolve, 300));
-          const qrReaderCheck = document.getElementById('qr-reader');
-          if (qrReaderCheck) {
-            const videoElement = qrReaderCheck.querySelector('video');
-            if (videoElement && videoElement.readyState > 0 && !videoElement.paused) {
-              // Camera is actually working! Don't show error
-              setCameraError(null);
-              setInitializing(false);
-              isInitializingRef.current = false;
-              return;
+          const videoElement = qrReaderFinalCheck.querySelector('video');
+          if (videoElement) {
+            // Check multiple indicators that camera is working
+            const hasStream = videoElement.srcObject !== null;
+            const isReady = videoElement.readyState >= 2; // HAVE_CURRENT_DATA or higher
+            const isPlaying = !videoElement.paused;
+            const hasVideo = videoElement.videoWidth > 0 && videoElement.videoHeight > 0;
+            
+            if (hasStream || isReady || isPlaying || hasVideo) {
+              cameraIsWorking = true;
             }
           }
         } catch (_) {
-          // Scanner check failed, continue with error
+          // Check failed, assume camera is not working
         }
       }
       
-      // Only show error if it's a clear, specific error
+      // If camera is actually working, don't show error
+      if (cameraIsWorking) {
+        setCameraError(null);
+        setInitializing(false);
+        isInitializingRef.current = false;
+        return;
+      }
+      
+      // Camera is definitely not working - show appropriate error
+      const errorMsg = error?.message || error?.name || 'Unknown error';
       let userMessage = '';
       
       if (errorMsg.includes('NotAllowedError') || errorMsg.toLowerCase().includes('permission denied') || errorMsg.includes('403')) {
-        userMessage = 'Camera permission denied. ';
+        userMessage = 'Camera permission is required. ';
         if (/Android/i.test(navigator.userAgent)) {
-          userMessage += 'Please check: Browser Settings → Site Settings → Camera → Allow. Then refresh the page.';
+          userMessage += 'Please: 1) Tap the camera icon 🔒 in the address bar 2) Select "Allow" 3) Refresh the page and try again.';
         } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-          userMessage += 'Go to iPhone Settings → Safari → Camera → Allow. Then refresh the page.';
+          userMessage += 'Please: 1) Go to iPhone Settings → Safari → Camera → Allow 2) Refresh the page and try again.';
         } else {
-          userMessage += 'Please allow camera access in your browser settings and refresh the page.';
+          userMessage += 'Please allow camera access in browser settings, then refresh and try again.';
         }
       } else if (errorMsg.includes('NotFoundError') && !errorMsg.toLowerCase().includes('qr')) {
-        userMessage = 'No camera found on this device. Please use a device with a camera.';
+        userMessage = 'No camera found. Please use a device with a camera.';
       } else if (errorMsg.includes('NotReadableError') || errorMsg.includes('busy')) {
         userMessage = 'Camera is being used by another app. Please close other camera apps and try again.';
       } else if (errorMsg.includes('InsecureContextError') || errorMsg.includes('HTTPS')) {
-        userMessage = 'Camera access requires HTTPS. Please ensure the URL starts with https://';
+        userMessage = 'Camera requires HTTPS. Please ensure the URL starts with https://';
       } else {
-        // For generic errors, give helpful troubleshooting
-        userMessage = 'Unable to start camera. ';
-        userMessage += 'Please try: 1) Refresh the page 2) Allow camera permission 3) Check if other apps are using the camera.';
+        // Generic error - provide troubleshooting steps
+        userMessage = 'Camera access issue. Please try: 1) Refresh the page 2) Ensure camera permission is allowed 3) Check if other apps are using the camera 4) Try again.';
       }
       
       setCameraError(userMessage);
