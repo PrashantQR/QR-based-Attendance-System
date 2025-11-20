@@ -13,7 +13,9 @@ const QRScanner = () => {
   const [scanning, setScanning] = useState(true);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(false);
   const scannerRef = useRef(null);
+  const isStartingRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -141,41 +143,60 @@ const QRScanner = () => {
   const resetScanner = () => {
     setScanning(true);
     setResult(null);
+    startScanner();
   };
 
-  const startScanner = () => {
+  const stopCurrentScanner = async () => {
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.stop();
+      } catch (_) {}
+      try {
+        await scannerRef.current.clear();
+      } catch (_) {}
+      scannerRef.current = null;
+    }
+  };
+
+  const attemptStart = async (cameraConfig) => {
+    try {
+      scannerRef.current = new Html5Qrcode('qr-reader');
+      await scannerRef.current.start(
+        cameraConfig,
+        { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+        handleScan,
+        handleError
+      );
+      return true;
+    } catch (err) {
+      return false;
+    }
+  };
+
+  const startScanner = async () => {
+    if (isStartingRef.current) return;
+
+    isStartingRef.current = true;
+    setInitializing(true);
     setScanning(true);
     setResult(null);
-    
-    setTimeout(() => {
-      try {
-        if (scannerRef.current) {
-          scannerRef.current.stop().then(() => scannerRef.current.clear()).catch(() => {});
-        }
-        // Instantiate and start immediately on the back camera (environment)
-        scannerRef.current = new Html5Qrcode('qr-reader');
-        scannerRef.current.start(
-          { facingMode: { exact: 'environment' } },
-          { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
-          handleScan,
-          handleError
-        );
-      } catch (e) {
-        // Fallback to any available camera if exact environment is not available
-        try {
-          scannerRef.current = new Html5Qrcode('qr-reader');
-          scannerRef.current.start(
-            { facingMode: 'environment' },
-            { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
-            handleScan,
-            handleError
-          );
-        } catch (err) {
-          toast.error('Unable to access camera');
-          setScanning(false);
-        }
+
+    try {
+      await stopCurrentScanner();
+
+      const started =
+        (await attemptStart({ facingMode: { exact: 'environment' } })) ||
+        (await attemptStart({ facingMode: 'environment' })) ||
+        (await attemptStart({ facingMode: 'user' }));
+
+      if (!started) {
+        toast.error('Unable to access camera');
+        setScanning(false);
       }
-    }, 100);
+    } finally {
+      setInitializing(false);
+      isStartingRef.current = false;
+    }
   };
 
   // Auto-start scanning when the page loads
@@ -214,9 +235,19 @@ const QRScanner = () => {
                   <button
                     className="btn btn-primary"
                     onClick={startScanner}
+                    disabled={initializing}
                   >
-                    <FaCamera className="me-2" />
-                    Start Scanning
+                    {initializing ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" />
+                        Initializing...
+                      </>
+                    ) : (
+                      <>
+                        <FaCamera className="me-2" />
+                        Start Scanning
+                      </>
+                    )}
                   </button>
                 </div>
               )}
@@ -226,7 +257,10 @@ const QRScanner = () => {
                   <div className="scanner-container mb-3">
                     <div id="qr-reader"></div>
                   </div>
-                  <p className="text-muted">Point your camera at the QR code</p>
+                  <p className="text-muted mb-1">Point your camera at the QR code</p>
+                  {initializing && (
+                    <p className="text-success small">Opening camera...</p>
+                  )}
                 </div>
               )}
 
