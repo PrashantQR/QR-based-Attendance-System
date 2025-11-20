@@ -259,7 +259,8 @@ const QRScanner = () => {
       
       // Start scanner - try back camera first (best for QR scanning)
       // Use facingMode directly - this requests permission automatically
-      let cameraStarted = false;
+      // Don't catch errors immediately - let the scanner try to start
+      let startError = null;
       
       try {
         // Try back camera (environment) first - most common for mobile QR scanning
@@ -274,53 +275,73 @@ const QRScanner = () => {
           handleScan,
           handleError
         );
-        cameraStarted = true;
       } catch (startErr) {
-        const errorMsg = startErr?.message || startErr?.name || '';
-        
-        // Wait a moment and check if camera actually started despite the error
-        // Sometimes Html5Qrcode reports errors but camera still works
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const qrReaderCheck = document.getElementById('qr-reader');
-        if (qrReaderCheck) {
+        // Store error but don't throw yet - check if camera actually started
+        startError = startErr;
+      }
+      
+      // Wait longer for camera to initialize (give it time)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Check if camera is actually working (video element exists and is playing)
+      const qrReaderCheck = document.getElementById('qr-reader');
+      let cameraIsWorking = false;
+      
+      if (qrReaderCheck && scannerRef.current) {
+        try {
           const videoElement = qrReaderCheck.querySelector('video');
           if (videoElement) {
-            // Check multiple indicators that camera is working
-            const isPlaying = !videoElement.paused && videoElement.readyState >= 2;
+            // Multiple checks to verify camera is working
             const hasStream = videoElement.srcObject !== null;
+            const isReady = videoElement.readyState >= 1; // HAVE_METADATA or higher
+            const isNotPaused = !videoElement.paused;
+            const hasDimensions = videoElement.videoWidth > 0 && videoElement.videoHeight > 0;
             
-            if (isPlaying || hasStream || videoElement.readyState > 0) {
-              // Camera is actually working! Success
-              cameraStarted = true;
+            // If ANY of these are true, camera is likely working
+            if (hasStream || isReady || isNotPaused || hasDimensions) {
+              cameraIsWorking = true;
             }
           }
+        } catch (_) {
+          // Check failed, continue
         }
+      }
+      
+      // If camera is working, clear errors and return success
+      if (cameraIsWorking) {
+        setCameraError(null);
+        setInitializing(false);
+        isInitializingRef.current = false;
+        return;
+      }
+      
+      // If camera didn't start and we got an error, try front camera
+      if (startError && !cameraIsWorking) {
+        const errorMsg = startError?.message || startError?.name || '';
+        const isPermissionError = errorMsg.includes('NotAllowedError') || 
+                                  errorMsg.includes('Permission denied') || 
+                                  errorMsg.includes('403');
         
-        // If camera didn't start and it's not a permission error, try front camera
-        if (!cameraStarted) {
-          const isPermissionError = errorMsg.includes('NotAllowedError') || 
-                                    errorMsg.includes('Permission denied') || 
-                                    errorMsg.includes('403');
-          
-          if (!isPermissionError) {
+        // Only try front camera if it's NOT a permission error
+        if (!isPermissionError) {
+          try {
             // Clean up and try front camera
+            if (scannerRef.current) {
+              try {
+                await scannerRef.current.stop();
+                scannerRef.current.clear();
+              } catch (_) {}
+              scannerRef.current = null;
+            }
+            
+            const qrReaderElement = document.getElementById('qr-reader');
+            if (qrReaderElement) {
+              qrReaderElement.innerHTML = '';
+            }
+            
+            // Try front camera (user-facing)
+            scannerRef.current = new Html5Qrcode('qr-reader');
             try {
-              if (scannerRef.current) {
-                try {
-                  await scannerRef.current.stop();
-                  scannerRef.current.clear();
-                } catch (_) {}
-                scannerRef.current = null;
-              }
-              
-              const qrReaderElement = document.getElementById('qr-reader');
-              if (qrReaderElement) {
-                qrReaderElement.innerHTML = '';
-              }
-              
-              // Try front camera (user-facing)
-              scannerRef.current = new Html5Qrcode('qr-reader');
               await scannerRef.current.start(
                 { facingMode: 'user' },
                 { 
@@ -332,66 +353,113 @@ const QRScanner = () => {
                 handleScan,
                 handleError
               );
-              
-              // Wait and verify it's actually working
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              const qrReaderCheck2 = document.getElementById('qr-reader');
-              if (qrReaderCheck2) {
-                const videoElement2 = qrReaderCheck2.querySelector('video');
-                if (videoElement2 && (!videoElement2.paused || videoElement2.readyState > 0 || videoElement2.srcObject)) {
-                  cameraStarted = true;
+            } catch (_) {
+              // Ignore error, check if camera works anyway
+            }
+            
+            // Wait and verify front camera is working
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            const qrReaderCheck2 = document.getElementById('qr-reader');
+            if (qrReaderCheck2) {
+              const videoElement2 = qrReaderCheck2.querySelector('video');
+              if (videoElement2) {
+                const hasStream2 = videoElement2.srcObject !== null;
+                const isReady2 = videoElement2.readyState >= 1;
+                const isNotPaused2 = !videoElement2.paused;
+                const hasDimensions2 = videoElement2.videoWidth > 0 && videoElement2.videoHeight > 0;
+                
+                if (hasStream2 || isReady2 || isNotPaused2 || hasDimensions2) {
+                  cameraIsWorking = true;
                 }
               }
-              
-              if (!cameraStarted) {
-                throw startErr; // Re-throw if front camera also failed
-              }
-            } catch (err2) {
-              // Front camera also failed - throw original error
-              throw startErr;
             }
-          } else {
-            // Permission error - throw it
-            throw startErr;
+            
+            if (cameraIsWorking) {
+              setCameraError(null);
+              setInitializing(false);
+              isInitializingRef.current = false;
+              return;
+            }
+          } catch (_) {
+            // Front camera failed, continue to error handling
           }
         }
+        
+        // If we get here, both cameras failed - throw original error
+        throw startError;
       }
       
-      // If we get here and camera started, success!
-      if (cameraStarted) {
+      // If camera is working, success!
+      if (cameraIsWorking) {
         setCameraError(null);
         setInitializing(false);
         isInitializingRef.current = false;
         return;
       }
+      
+      // If camera didn't work and we have an error, throw it for error handling
+      if (startError) {
+        throw startError;
+      }
+      
+      // If no error and camera isn't working, something unexpected happened
+      // Wait a bit more and check again before showing error
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const finalCheck = document.getElementById('qr-reader');
+      if (finalCheck) {
+        const finalVideo = finalCheck.querySelector('video');
+        if (finalVideo && (finalVideo.srcObject || finalVideo.readyState > 0)) {
+          // Camera is actually working now!
+          setCameraError(null);
+          setInitializing(false);
+          isInitializingRef.current = false;
+          return;
+        }
+      }
+      
+      // Last resort - throw generic error
+      throw new Error('Camera failed to start');
     } catch (error) {
-      // Wait longer to verify if camera is actually working
-      // Sometimes errors are thrown but camera still starts
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Wait even longer to verify if camera is actually working
+      // Many errors are thrown even when camera works, especially on mobile
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
       // Final check - verify camera is actually not working
+      // Only show error if we're absolutely certain camera is NOT working
       let cameraIsWorking = false;
       const qrReaderFinalCheck = document.getElementById('qr-reader');
       if (qrReaderFinalCheck && scannerRef.current) {
         try {
           const videoElement = qrReaderFinalCheck.querySelector('video');
           if (videoElement) {
-            // Check multiple indicators that camera is working
+            // Check multiple indicators that camera is working - be very lenient
             const hasStream = videoElement.srcObject !== null;
-            const isReady = videoElement.readyState >= 2; // HAVE_CURRENT_DATA or higher
-            const isPlaying = !videoElement.paused;
+            const isReady = videoElement.readyState >= 1; // Any readyState is good
+            const isNotPaused = !videoElement.paused;
             const hasVideo = videoElement.videoWidth > 0 && videoElement.videoHeight > 0;
+            const hasCurrentTime = videoElement.currentTime > 0;
             
-            if (hasStream || isReady || isPlaying || hasVideo) {
+            // If ANY indicator shows camera might be working, assume it's working
+            if (hasStream || isReady || isNotPaused || hasVideo || hasCurrentTime) {
               cameraIsWorking = true;
+            }
+            
+            // Also check if video element exists and is in the DOM - that's a good sign
+            if (videoElement && videoElement.parentNode) {
+              // Video exists in DOM - might be working even if other checks fail
+              // Wait a bit more and check readyState again
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              if (videoElement.readyState > 0 || videoElement.srcObject) {
+                cameraIsWorking = true;
+              }
             }
           }
         } catch (_) {
-          // Check failed, assume camera is not working
+          // Check failed - don't assume camera is not working, just continue
         }
       }
       
-      // If camera is actually working, don't show error
+      // If camera is actually working (or might be working), don't show error
       if (cameraIsWorking) {
         setCameraError(null);
         setInitializing(false);
