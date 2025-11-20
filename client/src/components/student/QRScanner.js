@@ -42,24 +42,37 @@ const QRScanner = () => {
   };
 
   const handleError = (err) => {
-    // html5-qrcode emits frequent non-fatal scan errors; only handle fatal errors
+    // html5-qrcode emits frequent non-fatal scan errors during QR detection
+    // Only handle fatal errors that actually prevent camera access
     const errString = typeof err === 'string' ? err : (err?.message || err?.name || '');
-    const fatalHints = [
-      'NotAllowedError', // permissions denied
-      'NotFoundError',   // no camera
-      'NotReadableError',
-      'OverconstrainedError',
+    
+    // Only handle truly fatal errors - ignore common decode/scan errors
+    // Decode errors like "No QR code found" are normal and should be ignored
+    const fatalErrors = [
+      'NotAllowedError',      // permissions denied - but check if scanning is already active
+      'NotFoundError',        // no camera - only show if really no camera
+      'NotReadableError',     // camera busy - only if camera can't be read
       'StreamApiNotSupportedError',
       'InsecureContextError',
-      'Permission denied',
-      'permission'
+      'constraints not satisfied', // camera constraint error
+      'could not start video stream', // actual stream error
+      'Permission denied'     // explicit permission denial
     ];
 
-    // Only handle fatal errors - ignore common decode errors
-    if (fatalHints.some(h => errString.toLowerCase().includes(h.toLowerCase()))) {
+    // Only show error if it's a fatal error AND scanning is not already active
+    // If scanning is active, these are likely just decode errors
+    const isFatalError = fatalErrors.some(h => errString.toLowerCase().includes(h.toLowerCase()));
+    const isDecodeError = errString.toLowerCase().includes('qr code') || 
+                         errString.toLowerCase().includes('decode') ||
+                         errString.toLowerCase().includes('not found') ||
+                         errString.toLowerCase().includes('no qr');
+    
+    // Only handle if it's a fatal error AND not a decode error AND not already scanning successfully
+    if (isFatalError && !isDecodeError && !scannerRef.current) {
+      // This is a real camera access error
       let errorMessage = '';
       
-      if (errString.includes('NotAllowedError') || errString.toLowerCase().includes('permission')) {
+      if (errString.includes('NotAllowedError') || errString.toLowerCase().includes('permission denied')) {
         errorMessage = 'Camera permission denied. ';
         if (/Android/i.test(navigator.userAgent)) {
           errorMessage += 'Tap the camera icon 🔒 in your browser address bar and select "Allow".';
@@ -68,14 +81,18 @@ const QRScanner = () => {
         } else {
           errorMessage += 'Please allow camera access in your browser settings.';
         }
-      } else if (errString.includes('NotFoundError')) {
+      } else if (errString.includes('NotFoundError') && !errString.toLowerCase().includes('qr')) {
         errorMessage = 'No camera found on this device. Please use a device with a camera.';
       } else if (errString.includes('NotReadableError')) {
         errorMessage = 'Camera is being used by another application. Please close other apps using the camera.';
       } else if (errString.includes('InsecureContextError')) {
         errorMessage = 'Camera access requires HTTPS connection. Please ensure the URL starts with https://';
+      } else if (errString.includes('constraints not satisfied') || errString.includes('could not start')) {
+        errorMessage = 'Unable to start camera. Please check your camera permissions and try refreshing the page.';
       } else {
-        errorMessage = 'Unable to access camera. Please check your camera permissions and try again.';
+        // For other errors, don't show generic message - might be temporary
+        console.warn('Camera error (non-fatal):', errString);
+        return;
       }
       
       setCameraError(errorMessage);
@@ -91,7 +108,14 @@ const QRScanner = () => {
       return;
     }
 
-    // Ignore non-fatal decode errors (these are normal during scanning)
+    // Ignore all decode/scan errors - these are normal during QR code scanning
+    // Only log them for debugging, don't show to user
+    if (isDecodeError || errString.toLowerCase().includes('scan')) {
+      return; // Silently ignore - these are expected
+    }
+    
+    // For any other errors, just log but don't stop scanning
+    console.warn('Non-fatal scanner error:', errString);
   };
 
   const getCurrentLocation = () => {
@@ -258,9 +282,34 @@ const QRScanner = () => {
         // If back camera fails, try front camera as fallback
         const errorMsg = startErr?.message || startErr?.name || '';
         
-        // Only try front camera if it's not a permission error
-        // Permission errors should be shown to the user
-        if (!errorMsg.includes('NotAllowedError') && !errorMsg.includes('Permission denied') && !errorMsg.toLowerCase().includes('permission')) {
+        // Check if scanner actually started successfully despite the error
+        // Sometimes Html5Qrcode throws errors but camera still starts
+        // Check if video element exists in the scanner div
+        await new Promise(resolve => setTimeout(resolve, 500)); // Wait a bit
+        const qrReaderElement = document.getElementById('qr-reader');
+        if (qrReaderElement && scannerRef.current) {
+          try {
+            // Check if video element exists (indicates camera is actually running)
+            const videoElement = qrReaderElement.querySelector('video');
+            if (videoElement && videoElement.readyState > 0) {
+              // Camera is actually working! Clear errors
+              setCameraError(null);
+              setInitializing(false);
+              isInitializingRef.current = false;
+              return;
+            }
+          } catch (_) {
+            // Scanner check failed, continue with fallback
+          }
+        }
+        
+        // Only try front camera if it's clearly not a permission error
+        const isPermissionError = errorMsg.includes('NotAllowedError') || 
+                                  errorMsg.includes('Permission denied') || 
+                                  errorMsg.toLowerCase().includes('permission') ||
+                                  errorMsg.includes('403');
+        
+        if (!isPermissionError) {
           try {
             // Clean up failed attempt
             if (scannerRef.current) {
@@ -289,41 +338,88 @@ const QRScanner = () => {
               handleScan,
               handleError
             );
-            setCameraError(null);
-            setInitializing(false);
-            isInitializingRef.current = false;
-            return;
-          } catch (err2) {
-            // Both cameras failed - re-throw original error
+            
+            // Wait and check if it's actually working
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const qrReaderElement2 = document.getElementById('qr-reader');
+            if (qrReaderElement2 && scannerRef.current) {
+              try {
+                // Check if video element exists (indicates camera is actually running)
+                const videoElement = qrReaderElement2.querySelector('video');
+                if (videoElement && videoElement.readyState > 0) {
+                  // Camera is actually working!
+                  setCameraError(null);
+                  setInitializing(false);
+                  isInitializingRef.current = false;
+                  return;
+                }
+              } catch (_) {
+                // Continue to error handling
+              }
+            }
+            
+            // If we get here, both attempts failed
             throw startErr;
+          } catch (err2) {
+            // Both cameras failed - check if it's actually a permission issue
+            const err2Msg = err2?.message || err2?.name || errorMsg;
+            if (err2Msg.includes('NotAllowedError') || err2Msg.includes('Permission denied') || err2Msg.toLowerCase().includes('permission')) {
+              throw err2; // Show permission error
+            }
+            throw startErr; // Re-throw original error
           }
         } else {
-          // Permission error - throw it so user sees the error message
+          // Permission error - show to user
           throw startErr;
         }
       }
     } catch (error) {
-      // Handle all errors
+      // Handle all errors - but only show if scanner is definitely not working
       const errorMsg = error?.message || error?.name || 'Unknown error';
-      let userMessage = 'Unable to access camera. ';
       
-      if (errorMsg.includes('NotAllowedError') || errorMsg.toLowerCase().includes('permission') || errorMsg.includes('Permission denied')) {
+      // Double-check if scanner is actually running despite the error
+      // Sometimes errors occur but camera still works
+      if (scannerRef.current) {
+        try {
+          await new Promise(resolve => setTimeout(resolve, 300));
+          const qrReaderCheck = document.getElementById('qr-reader');
+          if (qrReaderCheck) {
+            const videoElement = qrReaderCheck.querySelector('video');
+            if (videoElement && videoElement.readyState > 0 && !videoElement.paused) {
+              // Camera is actually working! Don't show error
+              setCameraError(null);
+              setInitializing(false);
+              isInitializingRef.current = false;
+              return;
+            }
+          }
+        } catch (_) {
+          // Scanner check failed, continue with error
+        }
+      }
+      
+      // Only show error if it's a clear, specific error
+      let userMessage = '';
+      
+      if (errorMsg.includes('NotAllowedError') || errorMsg.toLowerCase().includes('permission denied') || errorMsg.includes('403')) {
         userMessage = 'Camera permission denied. ';
         if (/Android/i.test(navigator.userAgent)) {
-          userMessage += 'Tap the camera icon 🔒 in your browser address bar and select "Allow".';
+          userMessage += 'Please check: Browser Settings → Site Settings → Camera → Allow. Then refresh the page.';
         } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-          userMessage += 'Go to iPhone Settings → Safari → Camera → Allow.';
+          userMessage += 'Go to iPhone Settings → Safari → Camera → Allow. Then refresh the page.';
         } else {
-          userMessage += 'Please allow camera access in your browser settings.';
+          userMessage += 'Please allow camera access in your browser settings and refresh the page.';
         }
-      } else if (errorMsg.includes('NotFoundError') || errorMsg.includes('No camera') || errorMsg.includes('no camera')) {
+      } else if (errorMsg.includes('NotFoundError') && !errorMsg.toLowerCase().includes('qr')) {
         userMessage = 'No camera found on this device. Please use a device with a camera.';
       } else if (errorMsg.includes('NotReadableError') || errorMsg.includes('busy')) {
-        userMessage = 'Camera is being used by another app. Please close other apps using the camera and try again.';
+        userMessage = 'Camera is being used by another app. Please close other camera apps and try again.';
       } else if (errorMsg.includes('InsecureContextError') || errorMsg.includes('HTTPS')) {
         userMessage = 'Camera access requires HTTPS. Please ensure the URL starts with https://';
       } else {
-        userMessage += 'Please check your camera permissions and try again.';
+        // For generic errors, give helpful troubleshooting
+        userMessage = 'Unable to start camera. ';
+        userMessage += 'Please try: 1) Refresh the page 2) Allow camera permission 3) Check if other apps are using the camera.';
       }
       
       setCameraError(userMessage);
