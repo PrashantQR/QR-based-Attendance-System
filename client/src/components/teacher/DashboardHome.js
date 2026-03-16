@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import axios from 'axios';
+import { Link, useNavigate } from 'react-router-dom';
+import api from '../../utils/api';
+import { useAuth } from '../../contexts/AuthContext';
 import { FaQrcode, FaUsers, FaChartBar, FaCalendarAlt } from 'react-icons/fa';
 
 const DashboardHome = () => {
+  const { isAuthenticated, loading: authLoading, user, logout } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     todayAttendance: 0,
     activeQRCodes: 0,
@@ -13,23 +16,25 @@ const DashboardHome = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchDashboardStats();
-  }, []);
+    if (!authLoading && isAuthenticated && user?.role === 'teacher') {
+      fetchDashboardStats();
+    }
+  }, [authLoading, isAuthenticated, user]);
 
   const fetchDashboardStats = async () => {
     try {
       const today = new Date().toISOString().split('T')[0];
       
       // Fetch today's attendance
-      const attendanceResponse = await axios.get(`/api/attendance/daily?date=${today}`);
+      const attendanceResponse = await api.get(`/attendance/daily?date=${today}`);
       const attendanceData = attendanceResponse.data.data;
       
       // Fetch active QR codes
-      const qrResponse = await axios.get('/api/qr/active');
+      const qrResponse = await api.get('/qr/active');
       const activeQRCodes = qrResponse.data.count;
       
       // Fetch total students
-      const studentsResponse = await axios.get('/api/auth/students');
+      const studentsResponse = await api.get('/auth/students');
       const totalStudents = studentsResponse.data.count;
 
       setStats({
@@ -40,6 +45,12 @@ const DashboardHome = () => {
       });
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
+      const status = error.response?.status;
+      if (status === 401 || status === 403) {
+        // Token invalid or expired – log out and redirect
+        logout();
+        navigate('/login');
+      }
     } finally {
       setLoading(false);
     }
@@ -79,7 +90,11 @@ const DashboardHome = () => {
           </div>
         </div>
         <div className="col-md-3 mb-3">
-          <div className="stats-card">
+          <div
+            className="stats-card"
+            role="button"
+            onClick={() => navigate('/teacher/students')}
+          >
             <div className="stats-number">{stats.totalStudents}</div>
             <div className="stats-label">Total Students</div>
           </div>

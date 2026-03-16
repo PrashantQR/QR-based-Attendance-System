@@ -126,6 +126,13 @@ code {
   padding: 20px;
   text-align: center;
   margin-bottom: 20px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.stats-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
 }
 
 .stats-number {
@@ -235,5 +242,13 @@ code {
   
   .stats-number {
     font-size: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .navbar .dropdown-menu {
+    right: 0 !important;
+    left: auto !important;
+    min-width: 160px;
   }
 } 

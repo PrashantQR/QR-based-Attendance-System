@@ -28,18 +28,10 @@ const Login = () => {
     try {
       const result = await login(formData.email, formData.password);
       if (result.success) {
-        console.log('Login successful, navigating...');
+        console.log('Login successful, navigating to root...');
         console.log('User data:', result.user);
-        
-        // Navigate based on user role
-        const userRole = result.user?.role;
-        if (userRole === 'teacher') {
-          navigate('/teacher');
-        } else if (userRole === 'student') {
-          navigate('/student');
-        } else {
-          navigate('/');
-        }
+        // Let App route based on role from the root path
+        navigate('/');
       }
     } catch (error) {
       console.error('Login error:', error);

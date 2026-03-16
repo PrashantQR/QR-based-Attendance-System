@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import axios from 'axios';
+import api from '../../utils/api';
 import { FaQrcode, FaCalendarAlt, FaUser } from 'react-icons/fa';
 
 const DashboardHome = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalAttendance: 0,
     presentDays: 0,
@@ -23,7 +24,7 @@ const DashboardHome = () => {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 30); // Last 30 days
       
-      const response = await axios.get('/api/attendance/my-attendance', {
+      const response = await api.get('/attendance/my-attendance', {
         params: {
           startDate: startDate.toISOString().split('T')[0],
           endDate: new Date().toISOString().split('T')[0]
@@ -48,6 +49,11 @@ const DashboardHome = () => {
     }
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   if (loading) {
     return (
       <div className="loading-spinner">
@@ -60,10 +66,19 @@ const DashboardHome = () => {
 
   return (
     <div>
-      <div className="row mb-4">
-        <div className="col-12">
+      <div className="row mb-4 align-items-center">
+        <div className="col-8 col-sm-9">
           <h2 className="fw-bold text-white">Student Dashboard</h2>
           <p className="text-white-50">Welcome back, {user?.name}!</p>
+        </div>
+        <div className="col-4 col-sm-3 text-end">
+          <button
+            type="button"
+            className="btn btn-outline-light btn-sm"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
         </div>
       </div>
 
@@ -74,7 +89,7 @@ const DashboardHome = () => {
             <div className="card-body">
               <h5 className="card-title mb-3">Quick Actions</h5>
               <div className="row">
-                <div className="col-md-4 mb-3">
+                <div className="col-md-3 mb-3">
                   <Link to="/student/scan" className="text-decoration-none">
                     <div className="card text-center h-100">
                       <div className="card-body">
@@ -85,7 +100,7 @@ const DashboardHome = () => {
                     </div>
                   </Link>
                 </div>
-                <div className="col-md-4 mb-3">
+                <div className="col-md-3 mb-3">
                   <Link to="/student/my-attendance" className="text-decoration-none">
                     <div className="card text-center h-100">
                       <div className="card-body">
@@ -96,13 +111,24 @@ const DashboardHome = () => {
                     </div>
                   </Link>
                 </div>
-                <div className="col-md-4 mb-3">
+                <div className="col-md-3 mb-3">
                   <Link to="/profile" className="text-decoration-none">
                     <div className="card text-center h-100">
                       <div className="card-body">
                         <FaUser className="text-info mb-3" size={40} />
                         <h6 className="card-title">Profile</h6>
                         <p className="card-text text-muted">Update your profile</p>
+                      </div>
+                    </div>
+                  </Link>
+                </div>
+                <div className="col-md-3 mb-3">
+                  <Link to="/student/evaluate-instructor" className="text-decoration-none">
+                    <div className="card text-center h-100">
+                      <div className="card-body">
+                        <FaUser className="text-warning mb-3" size={40} />
+                        <h6 className="card-title">Instructor Evaluation</h6>
+                        <p className="card-text text-muted">Submit anonymous feedback</p>
                       </div>
                     </div>
                   </Link>

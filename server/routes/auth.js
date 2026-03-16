@@ -20,7 +20,7 @@ const generateToken = (id) => {
 // @access  Public
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, mobileNumber, password, role, studentId, department, year } = req.body;
+    const { name, email, mobileNumber, password, role, studentId, department, year, subjects } = req.body;
 
     // Check if user already exists with email
     const userExists = await User.findOne({ email });
@@ -60,7 +60,8 @@ router.post('/register', async (req, res) => {
       role,
       studentId,
       department,
-      year
+      year,
+      subjects: Array.isArray(subjects) ? subjects : (subjects ? [subjects] : [])
     });
 
     if (user) {
@@ -75,6 +76,7 @@ router.post('/register', async (req, res) => {
           studentId: user.studentId,
           department: user.department,
           year: user.year,
+          subjects: user.subjects,
           token: generateToken(user._id)
         }
       });
@@ -264,14 +266,24 @@ router.put('/change-password', protect, async (req, res) => {
   }
 });
 
-// @desc    Get all students (for teachers)
+// @desc    Get students in teacher's department
 // @route   GET /api/auth/students
 // @access  Private (Teachers only)
 router.get('/students', protect, authorize('teacher'), async (req, res) => {
   try {
+    const teacherDept = req.user.department;
+
+    if (!teacherDept) {
+      return res.status(400).json({
+        error: 'Missing department',
+        message: 'Teacher department is not configured'
+      });
+    }
+
     const students = await User.find({ 
       role: 'student',
-      isActive: true 
+      isActive: true,
+      department: teacherDept
     }).select('name studentId department year email mobileNumber');
     
     res.json({
@@ -284,6 +296,30 @@ router.get('/students', protect, authorize('teacher'), async (req, res) => {
     res.status(500).json({
       error: 'Server error',
       message: 'An error occurred while fetching students'
+    });
+  }
+});
+
+// @desc    Get all teachers (for evaluations / selection lists)
+// @route   GET /api/auth/teachers
+// @access  Private (any authenticated user)
+router.get('/teachers', protect, async (req, res) => {
+  try {
+    const teachers = await User.find({
+      role: 'teacher',
+      isActive: true
+    }).select('name email department');
+
+    res.json({
+      success: true,
+      count: teachers.length,
+      data: teachers
+    });
+  } catch (error) {
+    console.error('Get teachers error:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'An error occurred while fetching teachers'
     });
   }
 });

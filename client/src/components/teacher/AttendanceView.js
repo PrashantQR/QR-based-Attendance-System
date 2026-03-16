@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { FaCalendarAlt, FaTrash, FaDownload, FaEye } from 'react-icons/fa';
 
@@ -12,7 +12,7 @@ const AttendanceView = () => {
   const fetchAttendance = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`/api/attendance/daily?date=${selectedDate}`);
+      const response = await api.get(`/attendance/daily?date=${selectedDate}`);
       setAttendance(response.data.data.attendance);
       setStats(response.data.data.stats);
     } catch (error) {
@@ -30,7 +30,7 @@ const AttendanceView = () => {
   const deleteAttendance = async (id) => {
     if (window.confirm('Are you sure you want to delete this attendance record?')) {
       try {
-        await axios.delete(`/api/attendance/${id}`);
+        await api.delete(`/attendance/${id}`);
         toast.success('Attendance record deleted successfully');
         fetchAttendance();
       } catch (error) {

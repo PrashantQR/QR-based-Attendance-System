@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { FaQrcode, FaCopy, FaDownload, FaClock } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
 
 const QRGenerator = () => {
   const { user, isAuthenticated, token } = useAuth();
+  const teacherSubjects = Array.isArray(user?.subjects) ? user.subjects : [];
   const [formData, setFormData] = useState({
     description: '',
     location: '',
-    course: '',
+    className: '',
+    subject: '',
     validityMinutes: 10
   });
   const [generatedQR, setGeneratedQR] = useState(null);
@@ -40,12 +42,24 @@ const QRGenerator = () => {
       return;
     }
 
+    if (!formData.subject) {
+      toast.error('Please select a subject');
+      setLoading(false);
+      return;
+    }
+
     console.log('Generating QR code with token:', token ? 'Present' : 'Missing');
     console.log('User:', user);
-    console.log('Axios headers:', axios.defaults.headers.common);
-
     try {
-      const response = await axios.post('/api/qr/generate', formData);
+      const payload = {
+        description: formData.description,
+        location: formData.location,
+        className: formData.className,
+        subject: formData.subject,
+        validityMinutes: formData.validityMinutes
+      };
+
+      const response = await api.post('/qr/generate', payload);
       setGeneratedQR(response.data.data);
       toast.success('QR Code generated successfully!');
     } catch (error) {
@@ -137,6 +151,15 @@ const QRGenerator = () => {
               <h5 className="card-title mb-3">QR Code Settings</h5>
               <form onSubmit={generateQR}>
                 <div className="mb-3">
+                  <label className="form-label">Teacher</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={user?.name || ''}
+                    readOnly
+                  />
+                </div>
+                <div className="mb-3">
                   <label htmlFor="description" className="form-label">
                     Description
                   </label>
@@ -167,18 +190,36 @@ const QRGenerator = () => {
                 </div>
 
                 <div className="mb-3">
-                  <label htmlFor="course" className="form-label">
-                    Course/Subject
+                  <label htmlFor="className" className="form-label">
+                    Department / Class
                   </label>
                   <input
                     type="text"
                     className="form-control"
-                    id="course"
-                    name="course"
-                    value={formData.course}
+                    id="className"
+                    name="className"
+                    value={formData.className}
                     onChange={handleChange}
-                    placeholder="e.g., Computer Science"
+                    placeholder="e.g., MCA Year 1"
                   />
+                </div>
+
+                <div className="mb-3">
+                  <label htmlFor="subject" className="form-label">
+                    Subject
+                  </label>
+                  <select
+                    id="subject"
+                    name="subject"
+                    className="form-select"
+                    value={formData.subject}
+                    onChange={handleChange}
+                  >
+                    <option value="">Select Subject</option>
+                    {teacherSubjects.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="mb-4">

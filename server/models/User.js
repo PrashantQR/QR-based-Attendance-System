@@ -49,6 +49,11 @@ const userSchema = new mongoose.Schema({
     min: [1, 'Year must be at least 1'],
     max: [5, 'Year cannot exceed 5']
   },
+  subjects: {
+    type: [String],
+    default: [],
+    required: function() { return this.role === 'teacher'; }
+  },
   isActive: {
     type: Boolean,
     default: true

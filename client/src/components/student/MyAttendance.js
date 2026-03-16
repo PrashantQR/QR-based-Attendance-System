@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import api from '../../utils/api';
 import { FaCalendarAlt, FaChartBar } from 'react-icons/fa';
 
 const MyAttendance = () => {
@@ -18,9 +18,7 @@ const MyAttendance = () => {
     try {
       setLoading(true);
       console.log('Fetching attendance with params:', { startDate, endDate });
-      console.log('Axios headers:', axios.defaults.headers.common);
-      
-      const response = await axios.get('/api/attendance/my-attendance', {
+      const response = await api.get('/attendance/my-attendance', {
         params: {
           startDate,
           endDate

@@ -20,7 +20,21 @@ const generateRandomCode = () => {
 // @access  Private (Teachers only)
 router.post('/generate', protect, authorize('teacher'), async (req, res) => {
   try {
-    const { description, location, course, validityMinutes = 10 } = req.body;
+    const { description, location, className, subject, validityMinutes = 10 } = req.body;
+
+    if (!subject || !className) {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'Subject and department/class are required'
+      });
+    }
+
+    if (!Array.isArray(req.user.subjects) || !req.user.subjects.includes(subject)) {
+      return res.status(400).json({
+        error: 'Invalid subject',
+        message: 'You can only generate QR codes for your own subjects'
+      });
+    }
 
     // Generate unique QR code
     let code;
@@ -54,7 +68,10 @@ router.post('/generate', protect, authorize('teacher'), async (req, res) => {
       expiresAt,
       description: description || 'Daily attendance QR code',
       location: location || 'Classroom',
-      course: course || 'General'
+      course: subject || 'General',
+      className,
+      subject,
+      teacherName: req.user.name
     });
 
     // Generate QR code image

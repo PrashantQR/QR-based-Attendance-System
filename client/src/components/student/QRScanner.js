@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import axios from 'axios';
+import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { FaQrcode, FaCheck, FaTimes, FaCamera, FaArrowLeft } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
@@ -102,16 +102,16 @@ const QRScanner = () => {
       const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
       // First validate the QR code
-      const validateResponse = await axios.post(
-        `${API_BASE_URL}/api/qr/validate`,
+      const validateResponse = await api.post(
+        '/qr/validate',
         { code: qrCode },
         { headers: authHeaders }
       );
 
       if (validateResponse.data.success) {
         // Mark attendance with coordinates
-        const attendanceResponse = await axios.post(
-          `${API_BASE_URL}/api/attendance/mark`,
+        const attendanceResponse = await api.post(
+          '/attendance/mark',
           {
             qrCodeId: validateResponse.data.data._id,
             coordinates

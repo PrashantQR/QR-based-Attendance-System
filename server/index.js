@@ -3,11 +3,13 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', 'config.env') });
 
 const authRoutes = require('./routes/auth');
 const qrRoutes = require('./routes/qr');
 const attendanceRoutes = require('./routes/attendance');
+const evaluationRoutes = require('./routes/evaluation');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -37,6 +39,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/qr', qrRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/evaluation', evaluationRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

@@ -253,6 +253,21 @@ const Profile = () => {
                       </>
                     )}
 
+                    {user?.role === 'teacher' && (
+                      <div className="mb-3">
+                        <label className="form-label">
+                          Subjects
+                        </label>
+                        <div>
+                          <span>
+                            {Array.isArray(user?.subjects) && user.subjects.length > 0
+                              ? user.subjects.join(', ')
+                              : 'No subjects specified'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
                     <button
                       type="submit"
                       className="btn btn-primary"

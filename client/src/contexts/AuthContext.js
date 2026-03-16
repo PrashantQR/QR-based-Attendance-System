@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import axios from 'axios';
-import { API_BASE_URL } from '../config/api';
+import api from '../utils/api';
 import { toast } from 'react-toastify';
 
 const AuthContext = createContext();
@@ -70,9 +70,11 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (state.token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${state.token}`;
+      api.defaults.headers.common['Authorization'] = `Bearer ${state.token}`;
       localStorage.setItem('token', state.token);
     } else {
       delete axios.defaults.headers.common['Authorization'];
+      delete api.defaults.headers.common['Authorization'];
       localStorage.removeItem('token');
     }
   }, [state.token]);
@@ -87,9 +89,10 @@ export const AuthProvider = ({ children }) => {
         try {
           // Set token in axios headers before making the request
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           console.log('AuthContext - Set axios header with token');
           
-          const response = await axios.get('/api/auth/me');
+          const response = await api.get('/auth/me');
           console.log('AuthContext - Auth check successful:', response.data.data);
           
           // Preserve token so subsequent API calls include it
@@ -101,6 +104,7 @@ export const AuthProvider = ({ children }) => {
           console.error('AuthContext - Auth check failed:', error);
           // Clear everything on auth failure
           delete axios.defaults.headers.common['Authorization'];
+          delete api.defaults.headers.common['Authorization'];
           localStorage.removeItem('token');
           dispatch({ type: 'LOGOUT' });
         }
@@ -122,7 +126,7 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: 'LOGIN_START' });
     
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+      const response = await api.post('/auth/login', {
         email,
         password
       });
@@ -164,7 +168,7 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: 'LOGIN_START' });
     
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/register`, userData);
+      const response = await api.post('/auth/register', userData);
       
       // Set token immediately in axios headers
       const token = response.data.data.token;
@@ -192,6 +196,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     // Clear everything
     delete axios.defaults.headers.common['Authorization'];
+    delete api.defaults.headers.common['Authorization'];
     localStorage.removeItem('token');
     dispatch({ type: 'LOGOUT' });
     toast.info('Logged out successfully');
@@ -200,6 +205,7 @@ export const AuthProvider = ({ children }) => {
   const clearAuthState = () => {
     console.log('AuthContext - Clearing corrupted auth state');
     delete axios.defaults.headers.common['Authorization'];
+    delete api.defaults.headers.common['Authorization'];
     localStorage.removeItem('token');
     sessionStorage.clear();
     dispatch({ type: 'LOGOUT' });
@@ -212,7 +218,7 @@ export const AuthProvider = ({ children }) => {
 
   const updateProfile = async (profileData) => {
     try {
-      const response = await axios.put('/api/auth/me', profileData);
+      const response = await api.put('/auth/me', profileData);
       dispatch({
         type: 'UPDATE_USER',
         payload: response.data.data
@@ -228,7 +234,7 @@ export const AuthProvider = ({ children }) => {
 
   const changePassword = async (currentPassword, newPassword) => {
     try {
-      await axios.put('/api/auth/change-password', {
+      await api.put('/auth/change-password', {
         currentPassword,
         newPassword
       });
