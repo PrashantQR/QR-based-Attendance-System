@@ -17,7 +17,10 @@ app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://qr-based-attendance-phi.vercel.app'] 
+    ? [
+        'https://qr-based-attendance-phi.vercel.app',
+        'https://qr-based-attendance-system-1-vi94.onrender.com'
+      ]
     : ['http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
