@@ -119,7 +119,10 @@ export const AuthProvider = ({ children }) => {
     };
 
     checkAuth();
-  }, []); // Empty dependency array - only run on mount
+    // We intentionally run this effect only once on mount to perform
+    // an initial auth check based on any stored token.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const login = async (email, password) => {
     console.log('AuthContext - Starting login process');

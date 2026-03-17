@@ -5,11 +5,10 @@ import { toast } from 'react-toastify';
 import { FaQrcode, FaCheck, FaTimes, FaCamera, FaArrowLeft } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { API_BASE_URL } from '../../config/api';
 
 const QRScanner = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  useAuth(); // ensure auth context is available if needed later
   const [scanning, setScanning] = useState(true);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);

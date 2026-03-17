@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -15,13 +15,7 @@ const DashboardHome = () => {
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!authLoading && isAuthenticated && user?.role === 'teacher') {
-      fetchDashboardStats();
-    }
-  }, [authLoading, isAuthenticated, user]);
-
-  const fetchDashboardStats = async () => {
+  const fetchDashboardStats = useCallback(async () => {
     try {
       const today = new Date().toISOString().split('T')[0];
       
@@ -54,7 +48,13 @@ const DashboardHome = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [logout, navigate]);
+
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user?.role === 'teacher') {
+      fetchDashboardStats();
+    }
+  }, [authLoading, isAuthenticated, user, fetchDashboardStats]);
 
   if (loading) {
     return (

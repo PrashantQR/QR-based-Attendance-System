@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
 import { FaQrcode, FaCalendarAlt, FaUser } from 'react-icons/fa';
+import { motion } from 'framer-motion';
 
 const DashboardHome = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalAttendance: 0,
     presentDays: 0,
@@ -51,132 +51,129 @@ const DashboardHome = () => {
 
   if (loading) {
     return (
-      <div className="loading-spinner">
-        <div className="spinner-border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="row mb-4 align-items-center">
-        <div className="col-12">
-          <h2 className="fw-bold text-white">Student Dashboard</h2>
-          <p className="text-white-50">Welcome back, {user?.name}!</p>
-        </div>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-2">
+        <h2 className="text-2xl md:text-3xl font-semibold text-white">Student Dashboard</h2>
+        <p className="text-sm text-gray-400">Welcome back, {user?.name}!</p>
       </div>
 
-      {/* Quick Actions - moved above stats */}
-      <div className="row mb-4">
-        <div className="col-12">
-          <div className="card">
-            <div className="card-body">
-              <h5 className="card-title mb-3">Quick Actions</h5>
-              <div className="row">
-                <div className="col-md-3 mb-3">
-                  <Link to="/student/scan" className="text-decoration-none">
-                    <div className="card text-center h-100">
-                      <div className="card-body">
-                        <FaQrcode className="text-primary mb-3" size={40} />
-                        <h6 className="card-title">Scan QR Code</h6>
-                        <p className="card-text text-muted">Mark your attendance</p>
-                      </div>
-                    </div>
-                  </Link>
-                </div>
-                <div className="col-md-3 mb-3">
-                  <Link to="/student/my-attendance" className="text-decoration-none">
-                    <div className="card text-center h-100">
-                      <div className="card-body">
-                        <FaCalendarAlt className="text-success mb-3" size={40} />
-                        <h6 className="card-title">My Attendance</h6>
-                        <p className="card-text text-muted">View your attendance history</p>
-                      </div>
-                    </div>
-                  </Link>
-                </div>
-                <div className="col-md-3 mb-3">
-                  <Link to="/profile" className="text-decoration-none">
-                    <div className="card text-center h-100">
-                      <div className="card-body">
-                        <FaUser className="text-info mb-3" size={40} />
-                        <h6 className="card-title">Profile</h6>
-                        <p className="card-text text-muted">Update your profile</p>
-                      </div>
-                    </div>
-                  </Link>
-                </div>
-                <div className="col-md-3 mb-3">
-                  <Link to="/student/evaluate-instructor" className="text-decoration-none">
-                    <div className="card text-center h-100">
-                      <div className="card-body">
-                        <FaUser className="text-warning mb-3" size={40} />
-                        <h6 className="card-title">Instructor Evaluation</h6>
-                        <p className="card-text text-muted">Submit anonymous feedback</p>
-                      </div>
-                    </div>
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
+      {/* Quick Actions */}
+      <motion.section
+        layout
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        className="bg-secondary/70 border border-white/5 rounded-2.5xl p-4 md:p-6 shadow-soft-glass backdrop-blur-xl"
+      >
+        <h3 className="text-sm font-semibold text-gray-300 mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <QuickActionCard
+            to="/student/scan"
+            icon={<FaQrcode className="text-accent" size={32} />}
+            title="Scan QR Code"
+            description="Mark your attendance"
+          />
+          <QuickActionCard
+            to="/student/my-attendance"
+            icon={<FaCalendarAlt className="text-emerald-400" size={32} />}
+            title="My Attendance"
+            description="View your attendance history"
+          />
+          <QuickActionCard
+            to="/profile"
+            icon={<FaUser className="text-sky-400" size={32} />}
+            title="Profile"
+            description="Update your profile"
+          />
+          <QuickActionCard
+            to="/student/evaluate-instructor"
+            icon={<FaUser className="text-yellow-400" size={32} />}
+            title="Instructor Evaluation"
+            description="Submit anonymous feedback"
+          />
         </div>
-      </div>
+      </motion.section>
 
       {/* Stats Cards */}
-      <div className="row mb-4">
-        <div className="col-md-3 mb-3">
-          <div className="stats-card">
-            <div className="stats-number">{stats.totalAttendance}</div>
-            <div className="stats-label">Total Sessions</div>
-          </div>
-        </div>
-        <div className="col-md-3 mb-3">
-          <div className="stats-card">
-            <div className="stats-number">{stats.presentDays}</div>
-            <div className="stats-label">Present Days</div>
-          </div>
-        </div>
-        <div className="col-md-3 mb-3">
-          <div className="stats-card">
-            <div className="stats-number">{stats.lateDays}</div>
-            <div className="stats-label">Late Days</div>
-          </div>
-        </div>
-        <div className="col-md-3 mb-3">
-          <div className="stats-card">
-            <div className="stats-number">{stats.attendanceRate}%</div>
-            <div className="stats-label">Attendance Rate</div>
-          </div>
-        </div>
-      </div>
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Total Sessions" value={stats.totalAttendance} />
+        <StatCard label="Present Days" value={stats.presentDays} />
+        <StatCard label="Late Days" value={stats.lateDays} />
+        <StatCard label="Attendance Rate" value={`${stats.attendanceRate}%`} />
+      </section>
 
       {/* Student Info */}
-      <div className="row">
-        <div className="col-12">
-          <div className="card">
-            <div className="card-body">
-              <h5 className="card-title mb-3">Student Information</h5>
-              <div className="row">
-                <div className="col-md-6">
-                  <p><strong>Name:</strong> {user?.name}</p>
-                  <p><strong>Student ID:</strong> {user?.studentId}</p>
-                  <p><strong>Email:</strong> {user?.email}</p>
-                </div>
-                <div className="col-md-6">
-                  <p><strong>Department:</strong> {user?.department}</p>
-                  <p><strong>Year:</strong> {user?.year}</p>
-                  <p><strong>Mobile Number:</strong> {user?.mobileNumber}</p>
-                </div>
-              </div>
-            </div>
+      <motion.section
+        layout
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.05 }}
+        className="bg-secondary/80 border border-white/5 rounded-2.5xl p-5 md:p-6 shadow-soft-glass backdrop-blur-xl"
+      >
+        <h3 className="text-sm font-semibold text-gray-300 mb-4">Student Information</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-200">
+          <div className="space-y-1.5">
+            <InfoRow label="Name" value={user?.name} />
+            <InfoRow label="Student ID" value={user?.studentId} />
+            <InfoRow label="Email" value={user?.email} />
+          </div>
+          <div className="space-y-1.5">
+            <InfoRow label="Department" value={user?.department} />
+            <InfoRow label="Year" value={user?.year} />
+            <InfoRow label="Mobile Number" value={user?.mobileNumber} />
           </div>
         </div>
-      </div>
+      </motion.section>
     </div>
   );
 };
+
+const QuickActionCard = ({ to, icon, title, description }) => (
+  <motion.div
+    whileHover={{ scale: 1.03, y: -2 }}
+    transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+    className="group"
+  >
+    <Link
+      to={to}
+      className="block bg-primary/80 border border-white/5 rounded-2.5xl px-4 py-5 h-full shadow-soft-glass hover:bg-primary/90 transition-colors duration-200"
+    >
+      <div className="flex flex-col items-start gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-black/40">
+          {icon}
+        </div>
+        <div>
+          <h4 className="text-sm font-semibold text-gray-100 mb-1">{title}</h4>
+          <p className="text-xs text-gray-400">{description}</p>
+        </div>
+      </div>
+    </Link>
+  </motion.div>
+);
+
+const StatCard = ({ label, value }) => (
+  <motion.div
+    whileHover={{ scale: 1.04, y: -2 }}
+    transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+    className="bg-gradient-to-br from-emerald-500/80 via-emerald-600/80 to-emerald-700/80 rounded-2.5xl p-4 shadow-soft-glass"
+  >
+    <div className="text-xs text-emerald-100/80 mb-2">{label}</div>
+    <div className="text-2xl md:text-3xl font-semibold text-white">{value}</div>
+  </motion.div>
+);
+
+const InfoRow = ({ label, value }) => (
+  <p>
+    <span className="font-semibold text-gray-300 mr-1.5">{label}:</span>
+    <span className="text-gray-200">{value ?? '—'}</span>
+  </p>
+);
 
 export default DashboardHome; 

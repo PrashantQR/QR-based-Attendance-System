@@ -1,7 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
-import Navbar from './components/Navbar';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import ForgotPassword from './components/auth/ForgotPassword';
@@ -36,10 +35,8 @@ const App = () => {
   }
 
   return (
-    <>
-      <Navbar />
-      <div className="container mt-4">
-        <Routes>
+    <div className="min-h-screen">
+      <Routes>
           <Route 
             path="/" 
             element={
@@ -68,7 +65,6 @@ const App = () => {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
-    </>
   );
 };
 
