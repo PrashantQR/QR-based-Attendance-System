@@ -326,6 +326,33 @@ router.get('/teachers', protect, async (req, res) => {
   }
 });
 
+// @desc    Get users by role (for quick admin check)
+// @route   GET /api/auth/users?role=teacher|student
+// @access  Private (Teachers only)
+router.get('/users', protect, authorize('teacher'), async (req, res) => {
+  try {
+    const role = req.query.role === 'teacher' ? 'teacher' : 'student';
+
+    const users = await User.find({
+      role,
+      isActive: true
+    }).select('name email mobileNumber role department year subjects studentId createdAt');
+
+    res.json({
+      success: true,
+      role,
+      count: users.length,
+      data: users
+    });
+  } catch (error) {
+    console.error('Get users by role error:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'An error occurred while fetching users'
+    });
+  }
+});
+
 // @desc    Forgot password
 // @route   POST /api/auth/forgot-password
 // @access  Public
