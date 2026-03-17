@@ -213,11 +213,8 @@ const QRScanner = () => {
           <p className="text-white-50 mb-0">Scan the QR code to mark your attendance</p>
         </div>
         <div className="col-auto">
-          <button className="btn btn-outline-light me-2" onClick={() => navigate('/student')}>
+          <button className="btn btn-outline-light" onClick={() => navigate('/student')}>
             <FaArrowLeft className="me-2" /> Dashboard
-          </button>
-          <button className="btn btn-danger" onClick={() => { logout(); navigate('/login'); }}>
-            <FaTimes className="me-2" /> Logout
           </button>
         </div>
       </div>

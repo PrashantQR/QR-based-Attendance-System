@@ -5,7 +5,7 @@ import api from '../../utils/api';
 import { FaQrcode, FaCalendarAlt, FaUser } from 'react-icons/fa';
 
 const DashboardHome = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalAttendance: 0,
@@ -49,11 +49,6 @@ const DashboardHome = () => {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
   if (loading) {
     return (
       <div className="loading-spinner">
@@ -67,18 +62,9 @@ const DashboardHome = () => {
   return (
     <div>
       <div className="row mb-4 align-items-center">
-        <div className="col-8 col-sm-9">
+        <div className="col-12">
           <h2 className="fw-bold text-white">Student Dashboard</h2>
           <p className="text-white-50">Welcome back, {user?.name}!</p>
-        </div>
-        <div className="col-4 col-sm-3 text-end">
-          <button
-            type="button"
-            className="btn btn-outline-light btn-sm"
-            onClick={handleLogout}
-          >
-            Logout
-          </button>
         </div>
       </div>
 
