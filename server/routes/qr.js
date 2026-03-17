@@ -21,12 +21,12 @@ const generateRandomCode = () => {
 // @access  Private (Teachers only)
 router.post('/generate', protect, authorize('teacher'), async (req, res) => {
   try {
-    const { description, location, className, course, semester, subject, validityMinutes = 10 } = req.body;
+    const { description, location, course, semester, subject, validityMinutes = 10 } = req.body;
 
-    if (!course || !semester || !subject || !className) {
+    if (!course || !semester || !subject) {
       return res.status(400).json({
         error: 'Validation error',
-        message: 'Course, semester, subject and department/class are required'
+        message: 'Course, semester and subject are required'
       });
     }
 
@@ -70,7 +70,6 @@ router.post('/generate', protect, authorize('teacher'), async (req, res) => {
       description: description || 'Daily attendance QR code',
       location: location || 'Classroom',
       course,
-      className,
       semester,
       subject,
       teacherName: req.user.name
@@ -112,7 +111,6 @@ router.post('/generate', protect, authorize('teacher'), async (req, res) => {
         description: qrCode.description,
         location: qrCode.location,
         course: qrCode.course,
-        className: qrCode.className,
         semester: qrCode.semester,
         subject: qrCode.subject,
         studentsAllowedCount: Array.isArray(qrCode.studentsAllowed)
