@@ -9,6 +9,7 @@ import TeacherDashboard from './components/teacher/TeacherDashboard';
 import StudentDashboard from './components/student/StudentDashboard';
 import Profile from './components/Profile';
 import LoadingSpinner from './components/LoadingSpinner';
+import MainLayout from './components/layout/MainLayout';
 
 const App = () => {
   const { isAuthenticated, loading, user } = useAuth();
@@ -61,7 +62,14 @@ const App = () => {
                 : <Navigate to="/teacher" replace />
             } 
           />
-          <Route path="/profile" element={<Profile />} />
+          <Route 
+            path="/profile" 
+            element={
+              <MainLayout>
+                <Profile />
+              </MainLayout>
+            } 
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
