@@ -1,10 +1,36 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FaBell } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
+import { Settings, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const TopNavbar = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  const handleLogout = () => {
+    // Clear auth state and redirect to login
+    logout();
+    sessionStorage.clear();
+    navigate('/login');
+  };
+
+  useEffect(() => {
+    const onClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+    if (open) {
+      window.addEventListener('mousedown', onClickOutside);
+    }
+    return () => {
+      window.removeEventListener('mousedown', onClickOutside);
+    };
+  }, [open]);
 
   return (
     <header className="sticky top-0 z-20 bg-secondary/80 backdrop-blur-xl border-b border-white/5">
@@ -37,16 +63,56 @@ const TopNavbar = () => {
             <span className="absolute -top-0.5 -right-0.5 inline-flex h-2.5 w-2.5 rounded-full bg-accent shadow-lg" />
           </motion.button>
 
-          <div className="flex items-center gap-2">
-            <div className="hidden sm:flex flex-col items-end">
-              <span className="text-xs text-gray-400">Welcome back</span>
-              <span className="text-sm font-semibold text-gray-100 truncate max-w-[140px]">
-                {user?.name}
-              </span>
-            </div>
-            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-accent to-emerald-400 text-secondary font-semibold flex items-center justify-center shadow-soft-glass text-sm">
-              {user?.name?.[0] || 'U'}
-            </div>
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setOpen((prev) => !prev)}
+              className="flex items-center gap-2 focus:outline-none"
+            >
+              <div className="hidden sm:flex flex-col items-end">
+                <span className="text-xs text-gray-400">Welcome back</span>
+                <span className="text-sm font-semibold text-gray-100 truncate max-w-[140px]">
+                  {user?.name}
+                </span>
+              </div>
+              <div className="h-9 w-9 rounded-full bg-gradient-to-br from-accent to-emerald-400 text-secondary font-semibold flex items-center justify-center shadow-soft-glass text-sm">
+                {user?.name?.[0] || 'U'}
+              </div>
+            </button>
+
+            <AnimatePresence>
+              {open && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 mt-2 w-52 bg-secondary/95 border border-white/10 rounded-2xl shadow-soft-glass backdrop-blur-xl overflow-hidden z-30"
+                >
+                  <div className="py-1">
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-2 px-4 py-2 text-xs text-gray-200 hover:bg-white/10 transition-all duration-200"
+                      onClick={() => {
+                        setOpen(false);
+                        navigate('/profile');
+                      }}
+                    >
+                      <Settings className="w-4 h-4 text-gray-300" />
+                      <span>Profile</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-2 px-4 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-all duration-200"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
