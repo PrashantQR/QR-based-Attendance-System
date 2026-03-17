@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 const Sidebar = () => {
   const { user } = useAuth();
 
+  // Student sidebar keeps full navigation
   const studentMenu = [
     { to: '/student', label: 'Dashboard', icon: FaTachometerAlt },
     { to: '/student/scan', label: 'Scan QR', icon: FaQrcode },
@@ -13,17 +14,12 @@ const Sidebar = () => {
     { to: '/profile', label: 'Profile', icon: FaUser }
   ];
 
+  // Teacher sidebar is minimal – only Dashboard
   const teacherMenu = [
-    { to: '/teacher', label: 'Dashboard', icon: FaTachometerAlt },
-    { to: '/teacher/qr-generate', label: 'Generate QR', icon: FaQrcode },
-    { to: '/teacher/attendance', label: 'View Attendance', icon: FaHistory },
-    { to: '/profile', label: 'Profile', icon: FaUser }
+    { to: '/teacher', label: 'Dashboard', icon: FaTachometerAlt }
   ];
 
-  const menuItems =
-    user?.role === 'teacher'
-      ? teacherMenu
-      : studentMenu;
+  const menuItems = user?.role === 'teacher' ? teacherMenu : studentMenu;
 
   return (
     <aside className="hidden md:flex md:flex-col bg-secondary/90 backdrop-blur-xl border-r border-white/5 shadow-soft-glass w-64 min-h-screen sticky top-0">

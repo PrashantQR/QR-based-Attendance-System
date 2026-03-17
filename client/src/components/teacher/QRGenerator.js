@@ -306,130 +306,135 @@ const QRGenerator = () => {
   }
 
   return (
-    <div>
-      <div className="row mb-4">
-        <div className="col-12">
-          <h2 className="fw-bold text-white">Generate QR Code</h2>
-          <p className="text-white-50">Create a new QR code for student attendance</p>
-        </div>
+    <div className="max-w-6xl mx-auto px-6 py-6 space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold text-white">Generate QR Code</h2>
+        <p className="text-sm text-gray-400">
+          Create a new QR code for student attendance
+        </p>
       </div>
 
-      {/* Manage Courses & Subjects (teacher-side management) */}
-      <div className="row mb-4">
-        <div className="col-md-6">
-          <div className="card">
-            <div className="card-body">
-              <h5 className="card-title mb-2">Manage Courses</h5>
-              <form className="d-flex gap-2" onSubmit={handleCreateCourse}>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Add new course (e.g., MCA)"
-                  value={newCourseName}
-                  onChange={(e) => setNewCourseName(e.target.value)}
-                />
-                <button type="submit" className="btn btn-outline-primary btn-sm">
-                  Add
-                </button>
-              </form>
-            </div>
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Left: Management + Form */}
+        <div className="space-y-4">
+          {/* Manage Courses */}
+          <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
+            <h5 className="text-sm font-semibold mb-3 text-white">
+              Manage Courses
+            </h5>
+            <form
+              className="flex flex-col sm:flex-row gap-2"
+              onSubmit={handleCreateCourse}
+            >
+              <input
+                type="text"
+                className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+                placeholder="Add new course (e.g., MCA)"
+                value={newCourseName}
+                onChange={(e) => setNewCourseName(e.target.value)}
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 rounded bg-emerald-500 hover:bg-emerald-600 text-xs font-semibold text-slate-900"
+              >
+                Add
+              </button>
+            </form>
           </div>
-        </div>
-        <div className="col-md-6">
-          <div className="card">
-            <div className="card-body">
-              <h5 className="card-title mb-2">Manage Subjects</h5>
-              <form className="row g-2" onSubmit={handleCreateSubject}>
-                <div className="col-12">
+
+          {/* Manage Subjects */}
+          <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
+            <h5 className="text-sm font-semibold mb-3 text-white">
+              Manage Subjects
+            </h5>
+            <form className="space-y-3" onSubmit={handleCreateSubject}>
+              <input
+                type="text"
+                className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+                placeholder="Subject name (e.g., Data Structures)"
+                value={newSubject}
+                onChange={(e) => setNewSubject(e.target.value)}
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <select
+                  className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+                  value={formData.course}
+                  onChange={handleChange}
+                >
+                  <option value="">Course</option>
+                  {courses.map((course) => (
+                    <option key={course} value={course}>
+                      {course}
+                    </option>
+                  ))}
+                  <option value="Other">Other</option>
+                </select>
+                {formData.course === 'Other' && (
                   <input
                     type="text"
-                    className="form-control"
-                    placeholder="Subject name (e.g., Data Structures)"
-                    value={newSubject}
-                    onChange={(e) => setNewSubject(e.target.value)}
+                    className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+                    placeholder="Enter custom course"
+                    value={formData.customCourse}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        customCourse: e.target.value
+                      }))
+                    }
                   />
-                </div>
-                <div className="col-5">
-                  <select
-                    className="form-select"
-                    value={formData.course}
-                    onChange={handleChange}
-                  >
-                    <option value="">Course</option>
-                    {courses.map((course) => (
-                      <option key={course} value={course}>
-                        {course}
-                      </option>
-                    ))}
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                {formData.course === 'Other' && (
-                  <div className="col-7">
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Enter custom course"
-                      value={formData.customCourse}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          customCourse: e.target.value
-                        }))
-                      }
-                    />
-                  </div>
                 )}
-                <div className="col-4">
-                  <select
-                    className="form-select"
-                    value={formData.semester}
-                    onChange={handleChange}
-                    disabled={!finalCourse}
-                  >
-                    <option value="">
-                      {finalCourse ? 'Select Semester' : 'Select course first'}
+                <select
+                  className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+                  value={formData.semester}
+                  onChange={handleChange}
+                  disabled={!finalCourse}
+                >
+                  <option value="">
+                    {finalCourse ? 'Select Semester' : 'Select course first'}
+                  </option>
+                  {qrSemesters.map((sem) => (
+                    <option key={sem} value={sem}>
+                      {sem}
                     </option>
-                    {qrSemesters.map((sem) => (
-                      <option key={sem} value={sem}>
-                        {sem}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="col-3 d-grid">
-                  <button type="submit" className="btn btn-outline-primary btn-sm">
-                    Add Subject
-                  </button>
-                </div>
-              </form>
-            </div>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="submit"
+                className="w-full px-4 py-2 rounded bg-emerald-500 hover:bg-emerald-600 text-xs font-semibold text-slate-900"
+              >
+                Add Subject
+              </button>
+            </form>
           </div>
-        </div>
-      </div>
 
-      <div className="row">
-        <div className="col-md-6">
-          <div className="card">
-            <div className="card-body">
-              <h5 className="card-title mb-3">QR Code Settings</h5>
+          {/* QR Settings */}
+          <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
+            <h5 className="text-sm font-semibold mb-3 text-white">
+              QR Code Settings
+            </h5>
               <form onSubmit={generateQR}>
                 <div className="mb-3">
-                  <label className="form-label">Teacher</label>
+                  <label className="block text-xs text-gray-400 mb-1">
+                    Teacher
+                  </label>
                   <input
                     type="text"
-                    className="form-control"
+                    className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
                     value={user?.name || ''}
                     readOnly
                   />
                 </div>
                 <div className="mb-3">
-                  <label htmlFor="description" className="form-label">
+                  <label
+                    htmlFor="description"
+                    className="block text-xs text-gray-400 mb-1"
+                  >
                     Description
                   </label>
                   <input
                     type="text"
-                    className="form-control"
+                    className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
                     id="description"
                     name="description"
                     value={formData.description}
@@ -439,12 +444,15 @@ const QRGenerator = () => {
                 </div>
 
                 <div className="mb-3">
-                  <label htmlFor="location" className="form-label">
+                  <label
+                    htmlFor="location"
+                    className="block text-xs text-gray-400 mb-1"
+                  >
                     Location
                   </label>
                   <input
                     type="text"
-                    className="form-control"
+                    className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
                     id="location"
                     name="location"
                     value={formData.location}
@@ -454,12 +462,15 @@ const QRGenerator = () => {
                 </div>
 
                 <div className="mb-3">
-                  <label htmlFor="className" className="form-label">
+                  <label
+                    htmlFor="className"
+                    className="block text-xs text-gray-400 mb-1"
+                  >
                     Department / Class
                   </label>
                   <input
                     type="text"
-                    className="form-control"
+                    className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
                     id="className"
                     name="className"
                     value={formData.className}
@@ -469,11 +480,13 @@ const QRGenerator = () => {
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label">Course</label>
+                  <label className="block text-xs text-gray-400 mb-1">
+                    Course
+                  </label>
                   <select
                     id="course"
                     name="course"
-                    className="form-select"
+                    className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
                     value={formData.course}
                     onChange={handleChange}
                   >
@@ -488,10 +501,12 @@ const QRGenerator = () => {
                 </div>
                 {formData.course === 'Other' && (
                   <div className="mb-3">
-                    <label className="form-label">Custom Course</label>
+                    <label className="block text-xs text-gray-400 mb-1">
+                      Custom Course
+                    </label>
                     <input
                       type="text"
-                      className="form-control"
+                      className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
                       placeholder="Enter custom course"
                       value={formData.customCourse}
                       onChange={(e) =>
@@ -505,11 +520,13 @@ const QRGenerator = () => {
                 )}
 
                 <div className="mb-3">
-                  <label className="form-label">Semester</label>
+                  <label className="block text-xs text-gray-400 mb-1">
+                    Semester
+                  </label>
                   <select
                     id="semester"
                     name="semester"
-                    className="form-select"
+                    className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
                     value={formData.semester}
                     onChange={handleChange}
                     disabled={!finalCourse}
@@ -526,11 +543,13 @@ const QRGenerator = () => {
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label">Subject</label>
+                  <label className="block text-xs text-gray-400 mb-1">
+                    Subject
+                  </label>
                   <select
                     id="subject"
                     name="subject"
-                    className="form-select"
+                    className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
                     value={formData.subject}
                     onChange={handleChange}
                     disabled={!formData.semester || availableSubjects.length === 0}
@@ -551,32 +570,35 @@ const QRGenerator = () => {
                 </div>
 
                 <div className="mb-4">
-                  <label htmlFor="validityMinutes" className="form-label">
+                  <label
+                    htmlFor="validityMinutes"
+                    className="block text-xs text-gray-400 mb-1"
+                  >
                     Validity (minutes)
                   </label>
-                  <div className="input-group">
-                    <span className="input-group-text">
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500">
                       <FaClock />
                     </span>
                     <input
                       type="number"
-                      className="form-control"
                       id="validityMinutes"
                       name="validityMinutes"
                       value={formData.validityMinutes}
                       onChange={handleChange}
                       min="1"
                       max="60"
+                      className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
                     />
                   </div>
-                  <small className="text-muted">
+                  <small className="text-xs text-gray-500">
                     QR code will expire after this time
                   </small>
                 </div>
 
                 <button
                   type="submit"
-                  className="btn btn-primary w-100"
+                  className="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-900 py-2 rounded-lg font-semibold text-sm transition disabled:opacity-60 disabled:cursor-not-allowed"
                   disabled={loading}
                 >
                   {loading ? (
@@ -592,79 +614,79 @@ const QRGenerator = () => {
                   )}
                 </button>
               </form>
-            </div>
           </div>
         </div>
 
-        <div className="col-md-6">
-          <div className="card">
-            <div className="card-body">
-              <h5 className="card-title mb-3">Generated QR Code</h5>
-              
-              {generatedQR ? (
-                <div className="text-center">
-                  <div className="qr-container mb-3">
-                    <img 
-                      src={generatedQR.qrCodeImage} 
-                      alt="QR Code" 
-                      className="img-fluid"
-                      style={{ maxWidth: '300px' }}
-                    />
-                  </div>
-                  
-                  <div className="mb-3">
-                    <strong>Code:</strong> {generatedQR.code}
-                  </div>
-                  
-                  <div className="mb-3">
-                    <strong>Expires:</strong> {new Date(generatedQR.expiresAt).toLocaleString()}
-                  </div>
-                  
-                  <div className="d-grid gap-2">
-                    <button
-                      className="btn btn-outline-primary"
-                      onClick={copyToClipboard}
-                    >
-                      <FaCopy className="me-2" />
-                      Copy Code
-                    </button>
-                    <button
-                      className="btn btn-outline-success"
-                      onClick={downloadQR}
-                    >
-                      <FaDownload className="me-2" />
-                      Download QR
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center text-muted">
-                  <FaQrcode size={100} className="mb-3" />
-                  <p>Generate a QR code to see it here</p>
-                </div>
-              )}
-            </div>
-          </div>
+        {/* Right: QR Preview */}
+        <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-6 flex flex-col items-center justify-center space-y-4">
+          <h2 className="text-lg font-semibold text-white">QR Preview</h2>
+          {generatedQR ? (
+            <>
+              <img
+                src={generatedQR.qrCodeImage}
+                alt="QR Code"
+                className="w-40 h-40 object-contain mb-2"
+              />
+              <div className="text-sm text-gray-200">
+                <p>
+                  <span className="font-semibold">Code:</span>{' '}
+                  {generatedQR.code}
+                </p>
+                <p>
+                  <span className="font-semibold">Expires:</span>{' '}
+                  {new Date(generatedQR.expiresAt).toLocaleString()}
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 w-full">
+                <button
+                  className="flex-1 border border-emerald-500 text-emerald-400 hover:bg-emerald-500/10 rounded-lg py-2 text-sm font-medium flex items-center justify-center gap-2"
+                  onClick={copyToClipboard}
+                >
+                  <FaCopy />
+                  Copy Code
+                </button>
+                <button
+                  className="flex-1 border border-sky-500 text-sky-400 hover:bg-sky-500/10 rounded-lg py-2 text-sm font-medium flex items-center justify-center gap-2"
+                  onClick={downloadQR}
+                >
+                  <FaDownload />
+                  Download QR
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-gray-400 text-center">
+              Generate a QR code to see it here
+            </p>
+          )}
         </div>
       </div>
 
       {generatedQR && (
-        <div className="row mt-4">
-          <div className="col-12">
-            <div className="card">
-              <div className="card-body">
-                <h5 className="card-title mb-3">QR Code Details</h5>
-                <div className="row">
-                  <div className="col-md-6">
-                    <p><strong>Description:</strong> {generatedQR.description}</p>
-                    <p><strong>Location:</strong> {generatedQR.location}</p>
-                  </div>
-                  <div className="col-md-6">
-                    <p><strong>Course/Subject:</strong> {generatedQR.course}</p>
-                    <p><strong>Generated:</strong> {new Date(generatedQR.generatedAt).toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
+        <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
+          <h5 className="text-sm font-semibold text-white mb-3">
+            QR Code Details
+          </h5>
+          <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-200">
+            <div>
+              <p>
+                <span className="font-semibold">Description:</span>{' '}
+                {generatedQR.description}
+              </p>
+              <p>
+                <span className="font-semibold">Location:</span>{' '}
+                {generatedQR.location}
+              </p>
+            </div>
+            <div>
+              <p>
+                <span className="font-semibold">Course/Subject:</span>{' '}
+                {generatedQR.course}
+              </p>
+              <p>
+                <span className="font-semibold">Generated:</span>{' '}
+                {new Date(generatedQR.generatedAt).toLocaleString()}
+              </p>
             </div>
           </div>
         </div>
