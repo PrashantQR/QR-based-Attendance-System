@@ -130,6 +130,8 @@ const Register = () => {
     }
 
     try {
+      // Debug: log outgoing signup payload
+      console.log('Register - submitting signup form with data:', formData);
       const userData = {
         name: formData.name,
         email: formData.email,

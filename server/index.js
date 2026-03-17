@@ -13,19 +13,33 @@ const evaluationRoutes = require('./routes/evaluation');
 
 const app = express();
 app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet());
+
+// CORS configuration to allow frontend origins and handle preflight
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://qr-based-attendance-phi.vercel.app',
+  'https://qr-based-attendance-system-1-vi94.onrender.com'
+];
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? [
-        'https://qr-based-attendance-phi.vercel.app',
-        'https://qr-based-attendance-system-1-vi94.onrender.com'
-      ]
-    : ['http://localhost:3000'],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl) or from allowed origins
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 204
 }));
+
+// Explicitly handle preflight for all routes
+app.options('*', cors());
 
 // Rate limiting
 const limiter = rateLimit({
