@@ -315,101 +315,8 @@ const QRGenerator = () => {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Left: Management + Form */}
-        <div className="space-y-4">
-          {/* Manage Courses */}
-          <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
-            <h5 className="text-sm font-semibold mb-3 text-white">
-              Manage Courses
-            </h5>
-            <form
-              className="flex flex-col sm:flex-row gap-2"
-              onSubmit={handleCreateCourse}
-            >
-              <input
-                type="text"
-                className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
-                placeholder="Add new course (e.g., MCA)"
-                value={newCourseName}
-                onChange={(e) => setNewCourseName(e.target.value)}
-              />
-              <button
-                type="submit"
-                className="px-4 py-2 rounded bg-emerald-500 hover:bg-emerald-600 text-xs font-semibold text-slate-900"
-              >
-                Add
-              </button>
-            </form>
-          </div>
-
-          {/* Manage Subjects */}
-          <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
-            <h5 className="text-sm font-semibold mb-3 text-white">
-              Manage Subjects
-            </h5>
-            <form className="space-y-3" onSubmit={handleCreateSubject}>
-              <input
-                type="text"
-                className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
-                placeholder="Subject name (e.g., Data Structures)"
-                value={newSubject}
-                onChange={(e) => setNewSubject(e.target.value)}
-              />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <select
-                  className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
-                  value={formData.course}
-                  onChange={handleChange}
-                >
-                  <option value="">Course</option>
-                  {courses.map((course) => (
-                    <option key={course} value={course}>
-                      {course}
-                    </option>
-                  ))}
-                  <option value="Other">Other</option>
-                </select>
-                {formData.course === 'Other' && (
-                  <input
-                    type="text"
-                    className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
-                    placeholder="Enter custom course"
-                    value={formData.customCourse}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        customCourse: e.target.value
-                      }))
-                    }
-                  />
-                )}
-                <select
-                  className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
-                  value={formData.semester}
-                  onChange={handleChange}
-                  disabled={!finalCourse}
-                >
-                  <option value="">
-                    {finalCourse ? 'Select Semester' : 'Select course first'}
-                  </option>
-                  {qrSemesters.map((sem) => (
-                    <option key={sem} value={sem}>
-                      {sem}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <button
-                type="submit"
-                className="w-full px-4 py-2 rounded bg-emerald-500 hover:bg-emerald-600 text-xs font-semibold text-slate-900"
-              >
-                Add Subject
-              </button>
-            </form>
-          </div>
-
-          {/* QR Settings */}
-          <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
+        {/* Left: QR Settings form */}
+        <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5 space-y-4">
             <h5 className="text-sm font-semibold mb-3 text-white">
               QR Code Settings
             </h5>
@@ -458,24 +365,6 @@ const QRGenerator = () => {
                     value={formData.location}
                     onChange={handleChange}
                     placeholder="e.g., Room 101"
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label
-                    htmlFor="className"
-                    className="block text-xs text-gray-400 mb-1"
-                  >
-                    Department / Class
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
-                    id="className"
-                    name="className"
-                    value={formData.className}
-                    onChange={handleChange}
-                    placeholder="e.g., MCA Year 1"
                   />
                 </div>
 
@@ -614,7 +503,7 @@ const QRGenerator = () => {
                   )}
                 </button>
               </form>
-          </div>
+          </form>
         </div>
 
         {/* Right: QR Preview */}

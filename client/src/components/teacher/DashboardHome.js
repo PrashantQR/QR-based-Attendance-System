@@ -180,21 +180,9 @@ const DashboardHome = () => {
             />
             <ActionCard
               title="View Attendance"
-              desc="Check detailed records"
+              desc="Open attendance view and analytics"
               onClick={() => navigate('/teacher/attendance')}
               icon={<FaUsers className="text-sky-400" />}
-            />
-            <ActionCard
-              title="Analytics"
-              desc="View subject-wise statistics"
-              onClick={() => navigate('/teacher/attendance')}
-              icon={<FaChartBar className="text-amber-400" />}
-            />
-            <ActionCard
-              title="History"
-              desc="Browse past sessions"
-              onClick={() => navigate('/teacher/attendance')}
-              icon={<FaCalendarAlt className="text-violet-400" />}
             />
           </div>
         </div>
