@@ -80,8 +80,19 @@ const QRGenerator = () => {
     return rawSubjects.filter((s) => teacherSubjects.includes(s));
   }, [finalCourse, formData.semester, rawSubjects, teacherSubjects]);
 
-  // Load courses on mount
+  // Load courses / set teacher's course
   useEffect(() => {
+    // For teachers, lock course to the one in their profile
+    if (user?.role === 'teacher' && user.course) {
+      setCourses([user.course]);
+      setFormData((prev) => ({
+        ...prev,
+        course: user.course
+      }));
+      return;
+    }
+
+    // Fallback (should rarely be hit for teachers)
     const fetchCourses = async () => {
       try {
         const res = await api.get('/courses');
@@ -95,7 +106,7 @@ const QRGenerator = () => {
       }
     };
     fetchCourses();
-  }, []);
+  }, [user]);
 
   // Load subjects whenever course + semester selected (standard + DB-backed)
   useEffect(() => {
@@ -371,7 +382,7 @@ const QRGenerator = () => {
 
             <div className="mb-3">
               <label className="block text-xs text-gray-400 mb-1">
-                Course
+                Course (from your profile)
               </label>
               <select
                 id="course"
@@ -379,36 +390,19 @@ const QRGenerator = () => {
                 className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
                 value={formData.course}
                 onChange={handleChange}
+                disabled
               >
-                <option value="">Select Course</option>
-                {courses.map((course) => (
-                  <option key={course} value={course}>
-                    {course}
-                  </option>
-                ))}
-                <option value="Other">Other</option>
+                {courses.length === 0 ? (
+                  <option value="">No course found</option>
+                ) : (
+                  courses.map((course) => (
+                    <option key={course} value={course}>
+                      {course}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
-
-            {formData.course === 'Other' && (
-              <div className="mb-3">
-                <label className="block text-xs text-gray-400 mb-1">
-                  Custom Course
-                </label>
-                <input
-                  type="text"
-                  className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
-                  placeholder="Enter custom course"
-                  value={formData.customCourse}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      customCourse: e.target.value
-                    }))
-                  }
-                />
-              </div>
-            )}
 
             <div className="mb-3">
               <label className="block text-xs text-gray-400 mb-1">
