@@ -17,7 +17,8 @@ app.set('trust proxy', 1);
 // Security middleware
 app.use(helmet());
 
-// CORS configuration to allow frontend origins and handle preflight
+// CORS configuration to allow frontend origins and let the library
+// handle allowed methods/headers for preflight correctly
 const allowedOrigins = [
   'http://localhost:3000',
   'https://qr-based-attendance-phi.vercel.app',
@@ -25,21 +26,15 @@ const allowedOrigins = [
 ];
 
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl) or from allowed origins
-    if (!origin || allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    return callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  optionsSuccessStatus: 204
+  origin: allowedOrigins,
+  credentials: true
 }));
 
-// Explicitly handle preflight for all routes
-app.options('*', cors());
+// Explicitly handle preflight for all routes with same config
+app.options('*', cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
 
 // Rate limiting
 const limiter = rateLimit({
