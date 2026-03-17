@@ -2,12 +2,29 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { FaCalendarAlt, FaTrash, FaDownload, FaEye } from 'react-icons/fa';
+import { useAuth } from '../../contexts/AuthContext';
 
 const AttendanceView = () => {
+  const { user } = useAuth();
   const [attendance, setAttendance] = useState([]);
   const [stats, setStats] = useState({});
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(true);
+  const [subjectFilter, setSubjectFilter] = useState('all');
+  const subjectSummary = attendance.reduce((acc, record) => {
+    const subject = record.qrCode?.subject || 'N/A';
+    if (!acc[subject]) {
+      acc[subject] = { total: 0, present: 0, late: 0 };
+    }
+    acc[subject].total += 1;
+    if (record.status === 'present') acc[subject].present += 1;
+    if (record.status === 'late') acc[subject].late += 1;
+    return acc;
+  }, {});
+  const filteredAttendance = attendance.filter((record) => {
+    if (subjectFilter === 'all') return true;
+    return record.qrCode?.subject === subjectFilter;
+  });
 
   const fetchAttendance = useCallback(async () => {
     try {
@@ -56,6 +73,13 @@ const AttendanceView = () => {
         <div className="col-12">
           <h2 className="fw-bold text-white">Attendance View</h2>
           <p className="text-white-50">View and manage attendance records</p>
+          <div className="d-flex flex-wrap gap-2 mt-2">
+            <span className="badge bg-dark border border-secondary">Course: {user?.course || 'N/A'}</span>
+            <span className="badge bg-dark border border-secondary">Semester: {user?.semester || 'N/A'}</span>
+            <span className="badge bg-dark border border-secondary">
+              Subjects: {Array.isArray(user?.subjects) && user.subjects.length > 0 ? user.subjects.join(', ') : 'N/A'}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -75,6 +99,33 @@ const AttendanceView = () => {
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
               />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Subject Filter */}
+      <div className="row mb-4">
+        <div className="col-md-6">
+          <div className="card">
+            <div className="card-body">
+              <label htmlFor="subjectFilter" className="form-label">
+                Filter by Subject
+              </label>
+              <select
+                id="subjectFilter"
+                className="form-select"
+                value={subjectFilter}
+                onChange={(e) => setSubjectFilter(e.target.value)}
+              >
+                <option value="all">All Subjects</option>
+                {Array.isArray(user?.subjects) &&
+                  user.subjects.map((subject) => (
+                    <option key={subject} value={subject}>
+                      {subject}
+                    </option>
+                  ))}
+              </select>
             </div>
           </div>
         </div>
@@ -138,7 +189,7 @@ const AttendanceView = () => {
                 </div>
               </div>
 
-              {attendance.length > 0 ? (
+              {filteredAttendance.length > 0 ? (
                 <div className="table-responsive">
                   <table className="table table-hover attendance-table">
                     <thead>
@@ -146,6 +197,9 @@ const AttendanceView = () => {
                         <th>Student Name</th>
                         <th>Student ID</th>
                         <th>Department</th>
+                        <th>Course</th>
+                        <th>Semester</th>
+                        <th>Subject</th>
                         <th>Year</th>
                         <th>Mobile Number</th>
                         <th>Status</th>
@@ -154,13 +208,16 @@ const AttendanceView = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {attendance.map((record) => (
+                      {filteredAttendance.map((record) => (
                         <tr key={record._id}>
                           <td>
                             <strong>{record.student.name}</strong>
                           </td>
                           <td>{record.student.studentId}</td>
                           <td>{record.student.department}</td>
+                          <td>{record.qrCode?.course || 'N/A'}</td>
+                          <td>{record.qrCode?.semester || 'N/A'}</td>
+                          <td>{record.qrCode?.subject || 'N/A'}</td>
                           <td>{record.student.year}</td>
                           <td>{record.student.mobileNumber}</td>
                           <td>
@@ -190,6 +247,36 @@ const AttendanceView = () => {
                   <FaCalendarAlt size={50} className="mb-3" />
                   <p>No attendance records found for this date</p>
                 </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Subject-wise Summary */}
+      <div className="row mt-4">
+        <div className="col-12">
+          <div className="card">
+            <div className="card-body">
+              <h5 className="card-title mb-3">Subject-wise Summary</h5>
+              {Object.keys(subjectSummary).length > 0 ? (
+                <div className="row">
+                  {Object.entries(subjectSummary).map(([subject, summary]) => (
+                    <div className="col-md-4 mb-3" key={subject}>
+                      <div className="stats-card h-100">
+                        <div className="stats-label">{subject}</div>
+                        <div className="stats-number">
+                          {summary.total > 0 ? Math.round((summary.present / summary.total) * 100) : 0}%
+                        </div>
+                        <small className="text-muted d-block">
+                          {summary.present} present / {summary.total} sessions
+                        </small>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted mb-0">No subject-wise data available.</p>
               )}
             </div>
           </div>

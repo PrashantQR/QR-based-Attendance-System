@@ -91,5 +91,33 @@ router.get('/subjects', async (req, res) => {
   }
 });
 
+// Student can suggest a new subject (optional)
+router.post('/subjects/student', protect, authorize('student'), async (req, res) => {
+  try {
+    const { name, course, semester } = req.body;
+    if (!name || !name.trim() || !course || !semester) {
+      return res.status(400).json({ error: 'Name, course and semester are required' });
+    }
+
+    const normalizedName = name.trim();
+    const existing = await Subject.findOne({ name: normalizedName, course, semester });
+    if (existing) {
+      return res.status(400).json({ error: 'Subject already exists for this course/semester' });
+    }
+
+    const subject = await Subject.create({
+      name: normalizedName,
+      course,
+      semester,
+      createdBy: req.user._id
+    });
+
+    res.status(201).json({ success: true, data: subject });
+  } catch (error) {
+    console.error('Create student subject error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;
 

@@ -4,6 +4,8 @@ import { toast } from 'react-toastify';
 import { FaQrcode, FaCopy, FaDownload, FaClock } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
 
+const defaultCourses = ['MCA', 'BCA', 'BSc', 'BA', 'BCom'];
+
 const QRGenerator = () => {
   const { user, isAuthenticated, token } = useAuth();
   const teacherSubjects = Array.isArray(user?.subjects) ? user.subjects : [];
@@ -12,6 +14,7 @@ const QRGenerator = () => {
     location: '',
     className: '',
     course: '',
+    customCourse: '',
     semester: '',
     subject: '',
     validityMinutes: 10
@@ -21,11 +24,7 @@ const QRGenerator = () => {
   const [courses, setCourses] = useState([]);
   const [rawSubjects, setRawSubjects] = useState([]);
   const [newCourseName, setNewCourseName] = useState('');
-  const [newSubject, setNewSubject] = useState({
-    name: '',
-    course: '',
-    semester: ''
-  });
+  const [newSubject, setNewSubject] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -34,6 +33,7 @@ const QRGenerator = () => {
         return {
           ...prev,
           course: value,
+          customCourse: '',
           semester: '',
           subject: ''
         };
@@ -57,13 +57,16 @@ const QRGenerator = () => {
     []
   );
 
+  const finalCourse =
+    formData.course === 'Other' ? formData.customCourse.trim() : formData.course;
+
   const availableSubjects = useMemo(() => {
-    if (!formData.course || !formData.semester) return [];
+    if (!finalCourse || !formData.semester) return [];
     if (rawSubjects.length === 0) return [];
     // Optionally intersect with teacherSubjects if they are defined
     if (teacherSubjects.length === 0) return rawSubjects;
     return rawSubjects.filter((s) => teacherSubjects.includes(s));
-  }, [formData.course, formData.semester, rawSubjects, teacherSubjects]);
+  }, [finalCourse, formData.semester, rawSubjects, teacherSubjects]);
 
   // Load courses on mount
   useEffect(() => {
@@ -71,10 +74,12 @@ const QRGenerator = () => {
       try {
         const res = await api.get('/courses');
         if (res.data?.success) {
-          setCourses(res.data.data || []);
+          const dbCourses = (res.data.data || []).map((c) => c.name);
+          setCourses([...new Set([...defaultCourses, ...dbCourses])]);
         }
       } catch (e) {
         console.error('Error fetching courses', e);
+        setCourses(defaultCourses);
       }
     };
     fetchCourses();
@@ -83,13 +88,13 @@ const QRGenerator = () => {
   // Load subjects whenever course + semester selected
   useEffect(() => {
     const fetchSubjects = async () => {
-      if (!formData.course || !formData.semester) {
+      if (!finalCourse || !formData.semester) {
         setRawSubjects([]);
         return;
       }
       try {
         const res = await api.get('/subjects', {
-          params: { course: formData.course, semester: formData.semester }
+          params: { course: finalCourse, semester: formData.semester }
         });
         if (res.data?.success) {
           const names = (res.data.data || []).map((s) => s.name);
@@ -101,7 +106,7 @@ const QRGenerator = () => {
       }
     };
     fetchSubjects();
-  }, [formData.course, formData.semester]);
+  }, [finalCourse, formData.semester]);
 
   const handleCreateCourse = async (e) => {
     e.preventDefault();
@@ -113,7 +118,7 @@ const QRGenerator = () => {
       const res = await api.post('/courses', { name: newCourseName.trim() });
       if (res.data?.success) {
         toast.success('Course added');
-        setCourses((prev) => [...prev, res.data.data]);
+        setCourses((prev) => [...prev, res.data.data.name]);
         setNewCourseName('');
       }
     } catch (error) {
@@ -125,26 +130,22 @@ const QRGenerator = () => {
 
   const handleCreateSubject = async (e) => {
     e.preventDefault();
-    if (!newSubject.name.trim() || !newSubject.course || !newSubject.semester) {
+    if (!newSubject.trim() || !formData.semester || !finalCourse) {
       toast.error('Enter subject name, course and semester');
       return;
     }
     try {
       const res = await api.post('/subjects', {
-        name: newSubject.name.trim(),
-        course: newSubject.course,
-        semester: newSubject.semester
+        name: newSubject.trim(),
+        course: finalCourse,
+        semester: formData.semester
       });
       if (res.data?.success) {
         toast.success('Subject added');
-        // If it matches current selection, refresh subjects list
-        if (
-          newSubject.course === formData.course &&
-          newSubject.semester === formData.semester
-        ) {
+        if (finalCourse === res.data.data.course && formData.semester === res.data.data.semester) {
           setRawSubjects((prev) => [...prev, res.data.data.name]);
         }
-        setNewSubject({ name: '', course: '', semester: '' });
+        setNewSubject('');
       }
     } catch (error) {
       console.error('Create subject error', error);
@@ -177,6 +178,12 @@ const QRGenerator = () => {
       return;
     }
 
+    if (formData.course === 'Other' && !formData.customCourse.trim()) {
+      toast.error('Please enter a custom course');
+      setLoading(false);
+      return;
+    }
+
     if (!formData.semester) {
       toast.error('Please select a semester');
       setLoading(false);
@@ -195,7 +202,7 @@ const QRGenerator = () => {
       const payload = {
         description: formData.description,
         location: formData.location,
-        course: formData.course,
+        course: finalCourse,
         semester: formData.semester,
         className: formData.className,
         subject: formData.subject,
@@ -318,35 +325,46 @@ const QRGenerator = () => {
                     type="text"
                     className="form-control"
                     placeholder="Subject name (e.g., Data Structures)"
-                    value={newSubject.name}
-                    onChange={(e) =>
-                      setNewSubject((prev) => ({ ...prev, name: e.target.value }))
-                    }
+                    value={newSubject}
+                    onChange={(e) => setNewSubject(e.target.value)}
                   />
                 </div>
                 <div className="col-5">
                   <select
                     className="form-select"
-                    value={newSubject.course}
-                    onChange={(e) =>
-                      setNewSubject((prev) => ({ ...prev, course: e.target.value }))
-                    }
+                    value={formData.course}
+                    onChange={handleChange}
                   >
                     <option value="">Course</option>
-                    {courses.map((c) => (
-                      <option key={c._id} value={c.name}>
-                        {c.name}
+                    {courses.map((course) => (
+                      <option key={course} value={course}>
+                        {course}
                       </option>
                     ))}
+                    <option value="Other">Other</option>
                   </select>
                 </div>
+                {formData.course === 'Other' && (
+                  <div className="col-7">
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Enter custom course"
+                      value={formData.customCourse}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          customCourse: e.target.value
+                        }))
+                      }
+                    />
+                  </div>
+                )}
                 <div className="col-4">
                   <select
                     className="form-select"
-                    value={newSubject.semester}
-                    onChange={(e) =>
-                      setNewSubject((prev) => ({ ...prev, semester: e.target.value }))
-                    }
+                    value={formData.semester}
+                    onChange={handleChange}
                   >
                     <option value="">Semester</option>
                     {availableSemesters.map((sem) => (
@@ -358,7 +376,7 @@ const QRGenerator = () => {
                 </div>
                 <div className="col-3 d-grid">
                   <button type="submit" className="btn btn-outline-primary btn-sm">
-                    Add
+                    Add Subject
                   </button>
                 </div>
               </form>
@@ -437,13 +455,31 @@ const QRGenerator = () => {
                     onChange={handleChange}
                   >
                     <option value="">Select Course</option>
-                    {courses.map((c) => (
-                      <option key={c._id} value={c.name}>
-                        {c.name}
+                    {courses.map((course) => (
+                      <option key={course} value={course}>
+                        {course}
                       </option>
                     ))}
+                    <option value="Other">Other</option>
                   </select>
                 </div>
+                {formData.course === 'Other' && (
+                  <div className="mb-3">
+                    <label className="form-label">Custom Course</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Enter custom course"
+                      value={formData.customCourse}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          customCourse: e.target.value
+                        }))
+                      }
+                    />
+                  </div>
+                )}
 
                 <div className="mb-3">
                   <label className="form-label">Semester</label>

@@ -8,7 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const QRScanner = () => {
   const navigate = useNavigate();
-  useAuth(); // ensure auth context is available if needed later
+  const { user } = useAuth();
   const [scanning, setScanning] = useState(true);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -223,6 +223,21 @@ const QRScanner = () => {
           <div className="card">
             <div className="card-body">
               <h5 className="card-title mb-3 text-center">QR Code Scanner</h5>
+              <div className="alert alert-dark border-0 mb-3">
+                <div className="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+                  <div>
+                    <strong>Enrolled Subjects:</strong>{' '}
+                    {Array.isArray(user?.subjects) && user.subjects.length > 0
+                      ? user.subjects.join(', ')
+                      : 'No subjects assigned'}
+                  </div>
+                  <div>
+                    <small className="text-muted">
+                      {user?.course || 'N/A'} · {user?.semester || 'N/A'}
+                    </small>
+                  </div>
+                </div>
+              </div>
               
               {!scanning && !result && (
                 <div className="text-center">

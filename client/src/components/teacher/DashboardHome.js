@@ -14,6 +14,16 @@ const DashboardHome = () => {
     recentActivity: []
   });
   const [loading, setLoading] = useState(true);
+  const subjectSummary = stats.recentActivity.reduce((acc, record) => {
+    const subject = record.qrCode?.subject || 'N/A';
+    if (!acc[subject]) {
+      acc[subject] = { total: 0, present: 0, late: 0 };
+    }
+    acc[subject].total += 1;
+    if (record.status === 'present') acc[subject].present += 1;
+    if (record.status === 'late') acc[subject].late += 1;
+    return acc;
+  }, {});
 
   const fetchDashboardStats = useCallback(async () => {
     try {
@@ -72,6 +82,47 @@ const DashboardHome = () => {
         <div className="col-12">
           <h2 className="fw-bold text-white">Teacher Dashboard</h2>
           <p className="text-white-50">Welcome back! Here's your overview for today.</p>
+          <div className="d-flex flex-wrap gap-2 mt-2">
+            <span className="badge bg-dark border border-secondary">
+              Course: {user?.course || 'N/A'}
+            </span>
+            <span className="badge bg-dark border border-secondary">
+              Semester: {user?.semester || 'N/A'}
+            </span>
+            <span className="badge bg-dark border border-secondary">
+              Subjects: {Array.isArray(user?.subjects) && user.subjects.length > 0 ? user.subjects.join(', ') : 'N/A'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Subject Summary */}
+      <div className="row mb-4">
+        <div className="col-12">
+          <div className="card">
+            <div className="card-body">
+              <h5 className="card-title mb-3">Subject Summary</h5>
+              {Object.keys(subjectSummary).length > 0 ? (
+                <div className="row">
+                  {Object.entries(subjectSummary).map(([subject, summary]) => (
+                    <div className="col-md-4 mb-3" key={subject}>
+                      <div className="stats-card h-100">
+                        <div className="stats-label">{subject}</div>
+                        <div className="stats-number">
+                          {summary.total > 0 ? Math.round((summary.present / summary.total) * 100) : 0}%
+                        </div>
+                        <small className="text-muted d-block">
+                          {summary.present} present / {summary.total} sessions
+                        </small>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted mb-0">No subject-wise data available yet.</p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -124,7 +175,7 @@ const DashboardHome = () => {
                       <div className="card-body">
                         <FaQrcode className="text-primary mb-3" size={40} />
                         <h6 className="card-title">Generate QR Code</h6>
-                        <p className="card-text text-muted">Create a new QR code for attendance</p>
+                        <p className="card-text text-muted">Create a new QR code for your course/subject</p>
                       </div>
                     </div>
                   </Link>
@@ -135,7 +186,7 @@ const DashboardHome = () => {
                       <div className="card-body">
                         <FaUsers className="text-success mb-3" size={40} />
                         <h6 className="card-title">View Attendance</h6>
-                        <p className="card-text text-muted">Check today's attendance records</p>
+                        <p className="card-text text-muted">Check attendance by course, semester and subject</p>
                       </div>
                     </div>
                   </Link>
@@ -146,7 +197,7 @@ const DashboardHome = () => {
                       <div className="card-body">
                         <FaChartBar className="text-warning mb-3" size={40} />
                         <h6 className="card-title">Analytics</h6>
-                        <p className="card-text text-muted">View attendance statistics</p>
+                        <p className="card-text text-muted">View subject-wise attendance statistics</p>
                       </div>
                     </div>
                   </Link>
@@ -182,6 +233,9 @@ const DashboardHome = () => {
                         <th>Student</th>
                         <th>Mobile Number</th>
                         <th>Description</th>
+                        <th>Course</th>
+                        <th>Semester</th>
+                        <th>Subject</th>
                         <th>Coordinates</th>
                         <th>Time</th>
                       </tr>
@@ -196,6 +250,9 @@ const DashboardHome = () => {
                           </td>
                           <td>{record.student.mobileNumber}</td>
                           <td>{record.qrCode?.description || 'N/A'}</td>
+                          <td>{record.qrCode?.course || 'N/A'}</td>
+                          <td>{record.qrCode?.semester || 'N/A'}</td>
+                          <td>{record.qrCode?.subject || 'N/A'}</td>
                           <td>
                             {record.coordinates && record.coordinates.latitude && record.coordinates.longitude ? (
                               <small className="text-muted">

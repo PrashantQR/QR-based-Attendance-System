@@ -5,6 +5,8 @@ import { mapSemesterToYear } from '../../constants/academicData';
 import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaIdCard, FaGraduationCap, FaPhone } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
+const defaultCourses = ['MCA', 'BCA', 'BSc', 'BA', 'BCom'];
+
 const Register = () => {
   const [formData, setFormData] = useState({
     name: '',
@@ -15,10 +17,12 @@ const Register = () => {
     role: 'student',
     studentId: '',
     course: '',
+    customCourse: '',
     semester: '',
     year: '',
     subjects: [],
     teacherCourse: '',
+    teacherCustomCourse: '',
     teacherSemester: '',
     teacherSubjects: [],
     teacherCustomSubject: ''
@@ -30,6 +34,7 @@ const Register = () => {
   const [availableSubjects, setAvailableSubjects] = useState([]);
   const [teacherCourses, setTeacherCourses] = useState([]);
   const [availableTeacherSubjects, setAvailableTeacherSubjects] = useState([]);
+  const [newSubject, setNewSubject] = useState('');
   
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -43,6 +48,7 @@ const Register = () => {
         return {
           ...prev,
           course: value,
+          customCourse: '',
           semester: '',
           subjects: [],
           year: ''
@@ -64,6 +70,7 @@ const Register = () => {
         return {
           ...prev,
           teacherCourse: value,
+          teacherCustomCourse: '',
           teacherSemester: '',
           teacherSubjects: []
         };
@@ -88,6 +95,14 @@ const Register = () => {
     () => ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6', 'Sem 7', 'Sem 8'],
     []
   );
+
+  const finalCourse =
+    formData.course === 'Other' ? formData.customCourse.trim() : formData.course;
+
+  const finalTeacherCourse =
+    formData.teacherCourse === 'Other'
+      ? formData.teacherCustomCourse.trim()
+      : formData.teacherCourse;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -123,6 +138,12 @@ const Register = () => {
         return;
       }
 
+      if (formData.course === 'Other' && !formData.customCourse.trim()) {
+        alert('Please enter custom course');
+        setLoading(false);
+        return;
+      }
+
       if (!formData.semester) {
         alert('Please select Semester');
         setLoading(false);
@@ -142,6 +163,12 @@ const Register = () => {
     } else if (formData.role === 'teacher') {
       if (!formData.teacherCourse) {
         alert('Please select teacher course');
+        setLoading(false);
+        return;
+      }
+
+      if (formData.teacherCourse === 'Other' && !formData.teacherCustomCourse.trim()) {
+        alert('Please enter custom teacher course');
         setLoading(false);
         return;
       }
@@ -173,14 +200,12 @@ const Register = () => {
       // Add student-specific fields if role is student
       if (formData.role === 'student') {
         userData.studentId = formData.studentId;
-        userData.course = formData.course;
+        userData.course = finalCourse;
         userData.semester = formData.semester;
         userData.year = formData.year;
         userData.subjects = formData.subjects;
-        userData.department = formData.course;
       } else if (formData.role === 'teacher') {
-        // department is optional for teachers; we only store course/semester/subjects
-        userData.course = formData.teacherCourse;
+        userData.course = finalTeacherCourse;
         userData.semester = formData.teacherSemester;
         userData.subjects = formData.teacherSubjects;
       }
@@ -203,11 +228,15 @@ const Register = () => {
         const res = await fetch('/api/courses');
         const json = await res.json();
         if (json.success) {
-          setCourses(json.data || []);
-          setTeacherCourses(json.data || []);
+          const dbCourses = (json.data || []).map((c) => c.name);
+          const merged = [...new Set([...defaultCourses, ...dbCourses])];
+          setCourses(merged);
+          setTeacherCourses(merged);
         }
       } catch (e) {
         console.error('Error fetching courses', e);
+        setCourses(defaultCourses);
+        setTeacherCourses(defaultCourses);
       }
     };
     fetchCourses();
@@ -223,7 +252,7 @@ const Register = () => {
       try {
         const res = await fetch(
           `/api/subjects?course=${encodeURIComponent(
-            formData.course
+            finalCourse
           )}&semester=${encodeURIComponent(formData.semester)}`
         );
         const json = await res.json();
@@ -236,7 +265,7 @@ const Register = () => {
       }
     };
     loadSubjects();
-  }, [formData.course, formData.semester]);
+  }, [formData.course, formData.semester, formData.customCourse, finalCourse]);
 
   // Load subjects for teacher when course+semester selected
   React.useEffect(() => {
@@ -248,7 +277,7 @@ const Register = () => {
       try {
         const res = await fetch(
           `/api/subjects?course=${encodeURIComponent(
-            formData.teacherCourse
+            finalTeacherCourse
           )}&semester=${encodeURIComponent(formData.teacherSemester)}`
         );
         const json = await res.json();
@@ -261,7 +290,7 @@ const Register = () => {
       }
     };
     loadTeacherSubjects();
-  }, [formData.teacherCourse, formData.teacherSemester]);
+  }, [formData.teacherCourse, formData.teacherSemester, formData.teacherCustomCourse, finalTeacherCourse]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary via-secondary to-black px-4">
@@ -332,13 +361,33 @@ const Register = () => {
                     className="w-full rounded-xl bg-primary/70 border border-white/10 px-3 py-2.5 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent/70 focus:border-accent/70"
                   >
                     <option value="">Select course</option>
-                    {teacherCourses.map((c) => (
-                      <option key={c._id} value={c.name}>
-                        {c.name}
+                    {teacherCourses.map((course) => (
+                      <option key={course} value={course}>
+                        {course}
                       </option>
                     ))}
+                    <option value="Other">Other</option>
                   </select>
                 </div>
+                {formData.teacherCourse === 'Other' && (
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-300">
+                      Custom course
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Enter custom teacher course"
+                      value={formData.teacherCustomCourse}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          teacherCustomCourse: e.target.value
+                        }))
+                      }
+                      className="w-full rounded-xl bg-primary/70 border border-white/10 px-3 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/70 focus:border-accent/70"
+                    />
+                  </div>
+                )}
                 <div className="space-y-1">
                   <label className="block text-xs font-medium text-gray-300">
                     Semester
@@ -433,6 +482,57 @@ const Register = () => {
                       {formData.teacherSubjects.length} subjects selected
                     </p>
                   )}
+                  <div className="flex gap-2 pt-2">
+                    <input
+                      type="text"
+                      placeholder="Add custom subject"
+                      value={newSubject}
+                      onChange={(e) => setNewSubject(e.target.value)}
+                      className="flex-1 rounded-xl bg-primary/70 border border-white/10 px-3 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/70 focus:border-accent/70"
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const subjectName = newSubject.trim();
+                        if (!subjectName || !formData.teacherSemester) return;
+
+                        try {
+                          const res = await fetch('/api/subjects', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              name: subjectName,
+                              course: finalTeacherCourse,
+                              semester: formData.teacherSemester
+                            })
+                          });
+
+                          const json = await res.json();
+                          if (!res.ok) {
+                            alert(json.error || 'Failed to add subject');
+                            return;
+                          }
+
+                          setAvailableTeacherSubjects((prev) =>
+                            prev.includes(subjectName) ? prev : [...prev, subjectName]
+                          );
+                          setFormData((prev) => ({
+                            ...prev,
+                            teacherSubjects: prev.teacherSubjects.includes(subjectName)
+                              ? prev.teacherSubjects
+                              : [...prev.teacherSubjects, subjectName]
+                          }));
+                          setNewSubject('');
+                        } catch (error) {
+                          console.error('Add custom subject error:', error);
+                          alert('Failed to add subject');
+                        }
+                      }}
+                      className="rounded-xl bg-accent text-secondary px-4 py-2.5 text-sm font-semibold hover:bg-emerald-400"
+                    >
+                      Add Subject
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <p className="text-xs text-gray-400">
@@ -505,15 +605,35 @@ const Register = () => {
                       onChange={handleChange}
                       className="w-full rounded-xl bg-primary/70 border border-white/10 pl-9 pr-3 py-2.5 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent/70 focus:border-accent/70"
                     >
-                    <option value="">Select course</option>
-                    {courses.map((c) => (
-                      <option key={c._id} value={c.name}>
-                        {c.name}
-                      </option>
-                    ))}
+                      <option value="">Select course</option>
+                      {courses.map((course) => (
+                        <option key={course} value={course}>
+                          {course}
+                        </option>
+                      ))}
+                      <option value="Other">Other</option>
                     </select>
                   </div>
                 </div>
+                {formData.course === 'Other' && (
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="block text-xs font-medium text-gray-300">
+                      Custom course
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Enter custom course"
+                      value={formData.customCourse}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          customCourse: e.target.value
+                        }))
+                      }
+                      className="w-full rounded-xl bg-primary/70 border border-white/10 px-3 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/70 focus:border-accent/70"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

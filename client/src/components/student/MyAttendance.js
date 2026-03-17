@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../utils/api';
 import { FaCalendarAlt, FaChartBar } from 'react-icons/fa';
+import { useAuth } from '../../contexts/AuthContext';
 
 const MyAttendance = () => {
+  const { user } = useAuth();
   const [attendance, setAttendance] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
@@ -13,6 +15,27 @@ const MyAttendance = () => {
   const [startDate, setStartDate] = useState(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(true);
+  const [subjectFilter, setSubjectFilter] = useState('all');
+  const enrolledSubjects = Array.isArray(user?.subjects) ? user.subjects : [];
+  const subjectSummary = attendance.reduce((acc, record) => {
+    const subject = record.qrCode?.subject;
+    if (!subject || (enrolledSubjects.length > 0 && !enrolledSubjects.includes(subject))) {
+      return acc;
+    }
+
+    if (!acc[subject]) {
+      acc[subject] = { total: 0, present: 0, late: 0 };
+    }
+
+    acc[subject].total += 1;
+    if (record.status === 'present') acc[subject].present += 1;
+    if (record.status === 'late') acc[subject].late += 1;
+    return acc;
+  }, {});
+  const filteredAttendance = attendance.filter((record) => {
+    if (subjectFilter === 'all') return true;
+    return record.qrCode?.subject === subjectFilter;
+  });
 
   const fetchAttendance = useCallback(async () => {
     try {
@@ -107,6 +130,30 @@ const MyAttendance = () => {
         </div>
       </div>
 
+      {/* Subject Filter */}
+      <div className="row mb-4">
+        <div className="col-md-6">
+          <div className="card">
+            <div className="card-body">
+              <label htmlFor="subjectFilter" className="form-label">Filter by Subject</label>
+              <select
+                id="subjectFilter"
+                className="form-select"
+                value={subjectFilter}
+                onChange={(e) => setSubjectFilter(e.target.value)}
+              >
+                <option value="all">All Subjects</option>
+                {enrolledSubjects.map((subject) => (
+                  <option key={subject} value={subject}>
+                    {subject}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Stats Cards */}
       <div className="row mb-4">
         <div className="col-md-3 mb-3">
@@ -146,11 +193,11 @@ const MyAttendance = () => {
                   Attendance History
                 </h5>
                 <span className="text-muted">
-                  {attendance.length} records found
+                  {filteredAttendance.length} records found
                 </span>
               </div>
 
-              {attendance.length > 0 ? (
+              {filteredAttendance.length > 0 ? (
                 <div className="table-responsive">
                   <table className="table table-hover attendance-table">
                     <thead>
@@ -160,11 +207,13 @@ const MyAttendance = () => {
                         <th>Time</th>
                         <th>Location</th>
                         <th>Course</th>
+                        <th>Semester</th>
+                        <th>Subject</th>
                         <th>Teacher</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {attendance.map((record) => (
+                      {filteredAttendance.map((record) => (
                         <tr key={record._id}>
                           <td>
                             <strong>
@@ -181,6 +230,8 @@ const MyAttendance = () => {
                           </td>
                           <td>{record.location}</td>
                           <td>{record.course}</td>
+                          <td>{record.semester || 'N/A'}</td>
+                          <td>{record.subject || 'N/A'}</td>
                           <td>{record.teacher?.name || 'N/A'}</td>
                         </tr>
                       ))}
@@ -199,7 +250,7 @@ const MyAttendance = () => {
       </div>
 
       {/* Attendance Summary */}
-      {attendance.length > 0 && (
+      {filteredAttendance.length > 0 && (
         <div className="row mt-4">
           <div className="col-12">
             <div className="card">
@@ -209,12 +260,56 @@ const MyAttendance = () => {
                   <div className="col-md-6">
                     <p><strong>Total Sessions:</strong> {stats.total}</p>
                     <p><strong>Present Days:</strong> {stats.present}</p>
+                    <p><strong>Course:</strong> {user?.course || 'N/A'}</p>
                   </div>
                   <div className="col-md-6">
                     <p><strong>Late Days:</strong> {stats.late}</p>
                     <p><strong>Attendance Rate:</strong> {stats.attendanceRate}%</p>
+                    <p><strong>Semester:</strong> {user?.semester || 'N/A'}</p>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Subject-wise Summary */}
+      {attendance.length > 0 && (
+        <div className="row mt-4">
+          <div className="col-12">
+            <div className="card">
+              <div className="card-body">
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h5 className="card-title mb-0">Subject-wise Summary</h5>
+                  <span className="text-muted">
+                    {Object.keys(subjectSummary).length} subject{Object.keys(subjectSummary).length === 1 ? '' : 's'}
+                  </span>
+                </div>
+
+                {Object.keys(subjectSummary).length > 0 ? (
+                  <div className="row">
+                    {Object.entries(subjectSummary).map(([subject, summary]) => {
+                      const rate = summary.total > 0 ? Math.round((summary.present / summary.total) * 100) : 0;
+                      return (
+                        <div className="col-md-4 mb-3" key={subject}>
+                          <div className="stats-card h-100">
+                            <div className="stats-label">{subject}</div>
+                            <div className="stats-number">{rate}%</div>
+                            <small className="text-muted d-block">
+                              {summary.present} present / {summary.total} sessions
+                            </small>
+                            <small className="text-muted d-block">
+                              {summary.late} late
+                            </small>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-muted mb-0">No subject-wise attendance data available.</p>
+                )}
               </div>
             </div>
           </div>
