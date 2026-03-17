@@ -20,6 +20,7 @@ const generateToken = (id) => {
 // @access  Public
 router.post('/register', async (req, res) => {
   try {
+    console.log('[/api/auth/register] BODY DATA:', req.body);
     const { name, email, mobileNumber, password, role, studentId, department, year, subjects } = req.body;
 
     // Check if user already exists with email
@@ -100,6 +101,7 @@ router.post('/register', async (req, res) => {
 // @access  Public
 router.post('/login', async (req, res) => {
   try {
+    console.log('[/api/auth/login] BODY DATA:', req.body);
     const { email, password } = req.body;
 
     // Check for user
