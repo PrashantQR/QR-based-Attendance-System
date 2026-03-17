@@ -1,11 +1,22 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { mapSemesterToYear } from '../../constants/academicData';
+import { academicData, mapSemesterToYear } from '../../constants/academicData';
 import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaIdCard, FaGraduationCap, FaPhone } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
 const defaultCourses = ['MCA', 'BCA', 'BSc', 'BA', 'BCom'];
+
+const courseSemesters = {
+  MCA: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
+  BCA: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6'],
+  BSc: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6'],
+  BA: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6'],
+  BCom: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6'],
+  BE: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6', 'Sem 7', 'Sem 8']
+};
+
+const defaultSemesters = ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6'];
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -91,11 +102,6 @@ const Register = () => {
     });
   };
 
-  const availableSemesters = useMemo(
-    () => ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6', 'Sem 7', 'Sem 8'],
-    []
-  );
-
   const finalCourse =
     formData.course === 'Other' ? formData.customCourse.trim() : formData.course;
 
@@ -103,6 +109,16 @@ const Register = () => {
     formData.teacherCourse === 'Other'
       ? formData.teacherCustomCourse.trim()
       : formData.teacherCourse;
+
+  const studentSemesters = useMemo(() => {
+    if (!finalCourse) return [];
+    return courseSemesters[finalCourse] || defaultSemesters;
+  }, [finalCourse]);
+
+  const teacherSemesters = useMemo(() => {
+    if (!finalTeacherCourse) return [];
+    return courseSemesters[finalTeacherCourse] || defaultSemesters;
+  }, [finalTeacherCourse]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -242,7 +258,7 @@ const Register = () => {
     fetchCourses();
   }, []);
 
-  // Load subjects for student when course+semester selected
+  // Load subjects for student when course+semester selected (standard + DB-backed)
   React.useEffect(() => {
     const loadSubjects = async () => {
       if (!formData.course || !formData.semester) {
@@ -250,24 +266,33 @@ const Register = () => {
         return;
       }
       try {
+        const standardSubjects =
+          academicData[finalCourse]?.[formData.semester] || [];
+
         const res = await fetch(
           `/api/subjects?course=${encodeURIComponent(
             finalCourse
           )}&semester=${encodeURIComponent(formData.semester)}`
         );
         const json = await res.json();
-        if (json.success) {
-          setAvailableSubjects((json.data || []).map((s) => s.name));
-        }
+
+        const dbSubjects = json.success
+          ? (json.data || []).map((s) => s.name)
+          : [];
+
+        const merged = [...new Set([...standardSubjects, ...dbSubjects])];
+        setAvailableSubjects(merged);
       } catch (e) {
         console.error('Error fetching subjects', e);
-        setAvailableSubjects([]);
+        const fallback =
+          academicData[finalCourse]?.[formData.semester] || [];
+        setAvailableSubjects(fallback);
       }
     };
     loadSubjects();
   }, [formData.course, formData.semester, formData.customCourse, finalCourse]);
 
-  // Load subjects for teacher when course+semester selected
+  // Load subjects for teacher when course+semester selected (standard + DB-backed)
   React.useEffect(() => {
     const loadTeacherSubjects = async () => {
       if (!formData.teacherCourse || !formData.teacherSemester) {
@@ -275,18 +300,27 @@ const Register = () => {
         return;
       }
       try {
+        const standardSubjects =
+          academicData[finalTeacherCourse]?.[formData.teacherSemester] || [];
+
         const res = await fetch(
           `/api/subjects?course=${encodeURIComponent(
             finalTeacherCourse
           )}&semester=${encodeURIComponent(formData.teacherSemester)}`
         );
         const json = await res.json();
-        if (json.success) {
-          setAvailableTeacherSubjects((json.data || []).map((s) => s.name));
-        }
+
+        const dbSubjects = json.success
+          ? (json.data || []).map((s) => s.name)
+          : [];
+
+        const merged = [...new Set([...standardSubjects, ...dbSubjects])];
+        setAvailableTeacherSubjects(merged);
       } catch (e) {
         console.error('Error fetching teacher subjects', e);
-        setAvailableTeacherSubjects([]);
+        const fallback =
+          academicData[finalTeacherCourse]?.[formData.teacherSemester] || [];
+        setAvailableTeacherSubjects(fallback);
       }
     };
     loadTeacherSubjects();
@@ -397,13 +431,13 @@ const Register = () => {
                     name="teacherSemester"
                     value={formData.teacherSemester}
                     onChange={handleChange}
-                    disabled={!formData.teacherCourse}
+                    disabled={!finalTeacherCourse}
                     className="w-full rounded-xl bg-primary/70 border border-white/10 px-3 py-2.5 text-sm text-gray-100 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-accent/70 focus:border-accent/70"
                   >
                     <option value="">
-                      {formData.teacherCourse ? 'Select semester' : 'Select course first'}
+                      {finalTeacherCourse ? 'Select semester' : 'Select course first'}
                     </option>
-                    {availableSemesters.map((sem) => (
+                    {teacherSemesters.map((sem) => (
                       <option key={sem} value={sem}>
                         {sem}
                       </option>
@@ -646,13 +680,13 @@ const Register = () => {
                     name="semester"
                     value={formData.semester}
                     onChange={handleChange}
-                    disabled={!formData.course}
+                    disabled={!finalCourse}
                     className="w-full rounded-xl bg-primary/70 border border-white/10 px-3 py-2.5 text-sm text-gray-100 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-accent/70 focus:border-accent/70"
                   >
                     <option value="">
-                      {formData.course ? 'Select semester' : 'Select course first'}
+                      {finalCourse ? 'Select semester' : 'Select course first'}
                     </option>
-                    {availableSemesters.map((sem) => (
+                    {studentSemesters.map((sem) => (
                       <option key={sem} value={sem}>
                         {sem}
                       </option>

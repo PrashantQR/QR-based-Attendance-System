@@ -3,8 +3,20 @@ import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { FaQrcode, FaCopy, FaDownload, FaClock } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
+import { academicData } from '../../constants/academicData';
 
 const defaultCourses = ['MCA', 'BCA', 'BSc', 'BA', 'BCom'];
+
+const courseSemesters = {
+  MCA: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
+  BCA: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6'],
+  BSc: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6'],
+  BA: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6'],
+  BCom: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6'],
+  BE: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6', 'Sem 7', 'Sem 8']
+};
+
+const defaultSemesters = ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6'];
 
 const QRGenerator = () => {
   const { user, isAuthenticated, token } = useAuth();
@@ -52,13 +64,13 @@ const QRGenerator = () => {
     });
   };
 
-  const availableSemesters = useMemo(
-    () => ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6', 'Sem 7', 'Sem 8'],
-    []
-  );
-
   const finalCourse =
     formData.course === 'Other' ? formData.customCourse.trim() : formData.course;
+
+  const qrSemesters = useMemo(() => {
+    if (!finalCourse) return [];
+    return courseSemesters[finalCourse] || defaultSemesters;
+  }, [finalCourse]);
 
   const availableSubjects = useMemo(() => {
     if (!finalCourse || !formData.semester) return [];
@@ -85,7 +97,7 @@ const QRGenerator = () => {
     fetchCourses();
   }, []);
 
-  // Load subjects whenever course + semester selected
+  // Load subjects whenever course + semester selected (standard + DB-backed)
   useEffect(() => {
     const fetchSubjects = async () => {
       if (!finalCourse || !formData.semester) {
@@ -96,13 +108,21 @@ const QRGenerator = () => {
         const res = await api.get('/subjects', {
           params: { course: finalCourse, semester: formData.semester }
         });
+        const standardSubjects =
+          academicData[finalCourse]?.[formData.semester] || [];
+
+        let dbSubjects = [];
         if (res.data?.success) {
-          const names = (res.data.data || []).map((s) => s.name);
-          setRawSubjects(names);
+          dbSubjects = (res.data.data || []).map((s) => s.name);
         }
+
+        const merged = [...new Set([...standardSubjects, ...dbSubjects])];
+        setRawSubjects(merged);
       } catch (e) {
         console.error('Error fetching subjects', e);
-        setRawSubjects([]);
+        const fallback =
+          academicData[finalCourse]?.[formData.semester] || [];
+        setRawSubjects(fallback);
       }
     };
     fetchSubjects();
@@ -365,9 +385,12 @@ const QRGenerator = () => {
                     className="form-select"
                     value={formData.semester}
                     onChange={handleChange}
+                    disabled={!finalCourse}
                   >
-                    <option value="">Semester</option>
-                    {availableSemesters.map((sem) => (
+                    <option value="">
+                      {finalCourse ? 'Select Semester' : 'Select course first'}
+                    </option>
+                    {qrSemesters.map((sem) => (
                       <option key={sem} value={sem}>
                         {sem}
                       </option>
@@ -489,12 +512,12 @@ const QRGenerator = () => {
                     className="form-select"
                     value={formData.semester}
                     onChange={handleChange}
-                    disabled={!formData.course}
+                    disabled={!finalCourse}
                   >
                     <option value="">
-                      {formData.course ? 'Select Semester' : 'Select course first'}
+                      {finalCourse ? 'Select Semester' : 'Select course first'}
                     </option>
-                    {availableSemesters.map((sem) => (
+                    {qrSemesters.map((sem) => (
                       <option key={sem} value={sem}>
                         {sem}
                       </option>
