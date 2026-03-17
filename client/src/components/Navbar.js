@@ -101,16 +101,6 @@ const Navbar = () => {
                     Profile
                   </Link>
                 </li>
-                <li>
-                  <button
-                    className="dropdown-item"
-                    type="button"
-                    onClick={handleLogout}
-                  >
-                    <FaSignOutAlt className="me-2" />
-                    Logout
-                  </button>
-                </li>
               </ul>
             </div>
           )}
