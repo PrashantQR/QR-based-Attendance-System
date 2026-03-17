@@ -17,9 +17,11 @@ const Register = () => {
     course: '',
     semester: '',
     year: '',
-    subject: '',
+    subjects: [],
     teacherDepartment: '',
-    teacherSubject: '',
+    teacherCourse: '',
+    teacherSemester: '',
+    teacherSubjects: [],
     teacherCustomSubject: ''
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -39,7 +41,7 @@ const Register = () => {
           ...prev,
           course: value,
           semester: '',
-          subject: '',
+          subjects: [],
           year: ''
         };
       }
@@ -49,8 +51,26 @@ const Register = () => {
         return {
           ...prev,
           semester: value,
-          subject: '',
+          subjects: [],
           year: computedYear
+        };
+      }
+
+      // Teacher academic hierarchy
+      if (name === 'teacherCourse') {
+        return {
+          ...prev,
+          teacherCourse: value,
+          teacherSemester: '',
+          teacherSubjects: []
+        };
+      }
+
+      if (name === 'teacherSemester') {
+        return {
+          ...prev,
+          teacherSemester: value,
+          teacherSubjects: []
         };
       }
 
@@ -72,6 +92,18 @@ const Register = () => {
     if (!courseData) return [];
     return courseData[formData.semester] || [];
   }, [formData.course, formData.semester]);
+
+  const availableTeacherSemesters = useMemo(() => {
+    if (!formData.teacherCourse || !academicData[formData.teacherCourse]) return [];
+    return Object.keys(academicData[formData.teacherCourse]);
+  }, [formData.teacherCourse]);
+
+  const availableTeacherSubjects = useMemo(() => {
+    if (!formData.teacherCourse || !formData.teacherSemester) return [];
+    const courseData = academicData[formData.teacherCourse];
+    if (!courseData) return [];
+    return courseData[formData.teacherSemester] || [];
+  }, [formData.teacherCourse, formData.teacherSemester]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -113,8 +145,8 @@ const Register = () => {
         return;
       }
 
-      if (!formData.subject) {
-        alert('Please select Subject');
+      if (!formData.subjects || formData.subjects.length === 0) {
+        alert('Please select at least one Subject');
         setLoading(false);
         return;
       }
@@ -130,14 +162,20 @@ const Register = () => {
         return;
       }
 
-      if (!formData.teacherSubject) {
-        alert('Please select subject');
+      if (!formData.teacherCourse) {
+        alert('Please select teacher course');
         setLoading(false);
         return;
       }
 
-      if (formData.teacherSubject === 'OTHER' && !formData.teacherCustomSubject.trim()) {
-        alert('Please enter custom subject');
+      if (!formData.teacherSemester) {
+        alert('Please select teacher semester');
+        setLoading(false);
+        return;
+      }
+
+      if (!formData.teacherSubjects || formData.teacherSubjects.length === 0) {
+        alert('Please select at least one subject');
         setLoading(false);
         return;
       }
@@ -160,16 +198,13 @@ const Register = () => {
         userData.course = formData.course;
         userData.semester = formData.semester;
         userData.year = formData.year;
-        userData.subject = formData.subject;
+        userData.subjects = formData.subjects;
         userData.department = formData.course;
       } else if (formData.role === 'teacher') {
-        const chosenSubject =
-          formData.teacherSubject === 'OTHER'
-            ? formData.teacherCustomSubject.trim()
-            : formData.teacherSubject;
-
         userData.department = formData.teacherDepartment.trim();
-        userData.subjects = [chosenSubject];
+        userData.course = formData.teacherCourse;
+        userData.semester = formData.teacherSemester;
+        userData.subjects = formData.teacherSubjects;
       }
 
       const result = await register(userData);
@@ -238,52 +273,129 @@ const Register = () => {
 
           {/* Teacher specific */}
           {formData.role === 'teacher' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <InputWithIcon
-                icon={<FaGraduationCap />}
-                id="teacherDepartment"
-                label="Department"
-                name="teacherDepartment"
-                value={formData.teacherDepartment}
-                onChange={handleChange}
-                placeholder="e.g., MCA"
-              />
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-300">Subject</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-3 flex items-center text-gray-500 text-sm">
-                    <FaGraduationCap />
-                  </span>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <InputWithIcon
+                  icon={<FaGraduationCap />}
+                  id="teacherDepartment"
+                  label="Department"
+                  name="teacherDepartment"
+                  value={formData.teacherDepartment}
+                  onChange={handleChange}
+                  placeholder="e.g., MCA"
+                />
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-300">
+                    Course
+                  </label>
                   <select
-                    id="teacherSubject"
-                    name="teacherSubject"
-                    value={formData.teacherSubject}
+                    id="teacherCourse"
+                    name="teacherCourse"
+                    value={formData.teacherCourse}
                     onChange={handleChange}
-                    required
-                    className="w-full rounded-xl bg-primary/70 border border-white/10 pl-9 pr-3 py-2.5 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent/70 focus:border-accent/70"
+                    className="w-full rounded-xl bg-primary/70 border border-white/10 px-3 py-2.5 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent/70 focus:border-accent/70"
                   >
-                    <option value="">Select subject</option>
-                    <option value="Data Structures">Data Structures</option>
-                    <option value="DBMS">DBMS</option>
-                    <option value="Operating Systems">Operating Systems</option>
-                    <option value="Computer Networks">Computer Networks</option>
-                    <option value="Software Engineering">Software Engineering</option>
-                    <option value="OTHER">Add custom subject</option>
+                    <option value="">Select course</option>
+                    {Object.keys(academicData).map((courseKey) => (
+                      <option key={courseKey} value={courseKey}>
+                        {courseKey}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-300">
+                    Semester
+                  </label>
+                  <select
+                    id="teacherSemester"
+                    name="teacherSemester"
+                    value={formData.teacherSemester}
+                    onChange={handleChange}
+                    disabled={!formData.teacherCourse}
+                    className="w-full rounded-xl bg-primary/70 border border-white/10 px-3 py-2.5 text-sm text-gray-100 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-accent/70 focus:border-accent/70"
+                  >
+                    <option value="">
+                      {formData.teacherCourse ? 'Select semester' : 'Select course first'}
+                    </option>
+                    {availableTeacherSemesters.map((sem) => (
+                      <option key={sem} value={sem}>
+                        {sem}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
 
-              {formData.teacherSubject === 'OTHER' && (
-                <Input
-                  id="teacherCustomSubject"
-                  label="Custom subject"
-                  name="teacherCustomSubject"
-                  value={formData.teacherCustomSubject}
-                  onChange={handleChange}
-                  placeholder="Enter subject name"
-                  className="md:col-span-2"
-                />
-              )}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-medium text-gray-300">
+                    Subjects (multi-select)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        teacherSubjects: availableTeacherSubjects
+                      }))
+                    }
+                    disabled={availableTeacherSubjects.length === 0}
+                    className="text-[11px] px-2 py-1 rounded-full border border-accent/60 text-accent hover:bg-accent/10 disabled:opacity-50"
+                  >
+                    Select all
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {availableTeacherSubjects.length === 0 && (
+                    <span className="text-xs text-gray-500">
+                      {formData.teacherSemester
+                        ? 'No subjects available'
+                        : 'Select course and semester'}
+                    </span>
+                  )}
+                  {availableTeacherSubjects.map((subj) => {
+                    const checked = formData.teacherSubjects.includes(subj);
+                    return (
+                      <label
+                        key={subj}
+                        className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full border cursor-pointer ${
+                          checked
+                            ? 'bg-accent/20 border-accent text-emerald-200'
+                            : 'border-white/15 text-gray-300'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          value={subj}
+                          checked={checked}
+                          onChange={(e) => {
+                            setFormData((prev) => {
+                              if (e.target.checked) {
+                                return {
+                                  ...prev,
+                                  teacherSubjects: [...prev.teacherSubjects, subj]
+                                };
+                              }
+                              return {
+                                ...prev,
+                                teacherSubjects: prev.teacherSubjects.filter((s) => s !== subj)
+                              };
+                            });
+                          }}
+                          className="w-3 h-3 accent-emerald-400"
+                        />
+                        <span>{subj}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {formData.teacherSubjects.length > 0 && (
+                  <p className="text-[11px] text-gray-400">
+                    {formData.teacherSubjects.length} subjects selected
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
@@ -399,31 +511,73 @@ const Register = () => {
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="block text-xs font-medium text-gray-300">
-                    Subject
-                  </label>
-                  <select
-                    id="subject"
-                    name="subject"
-                    value={formData.subject}
-                    onChange={handleChange}
-                    disabled={!formData.semester || availableSubjects.length === 0}
-                    className="w-full rounded-xl bg-primary/70 border border-white/10 px-3 py-2.5 text-sm text-gray-100 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-accent/70 focus:border-accent/70"
-                  >
-                    <option value="">
-                      {!formData.semester
-                        ? 'Select semester first'
-                        : availableSubjects.length === 0
-                        ? 'No subjects available'
-                        : 'Select subject'}
-                    </option>
-                    {availableSubjects.map((subj) => (
-                      <option key={subj} value={subj}>
-                        {subj}
-                      </option>
-                    ))}
-                  </select>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-medium text-gray-300">
+                      Subjects (multi-select)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          subjects: availableSubjects
+                        }))
+                      }
+                      disabled={availableSubjects.length === 0}
+                      className="text-[11px] px-2 py-1 rounded-full border border-accent/60 text-accent hover:bg-accent/10 disabled:opacity-50"
+                    >
+                      Select all
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {!formData.semester && (
+                      <span className="text-xs text-gray-500">Select semester first</span>
+                    )}
+                    {formData.semester && availableSubjects.length === 0 && (
+                      <span className="text-xs text-gray-500">No subjects available</span>
+                    )}
+                    {availableSubjects.map((subj) => {
+                      const checked = formData.subjects.includes(subj);
+                      return (
+                        <label
+                          key={subj}
+                          className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full border cursor-pointer ${
+                            checked
+                              ? 'bg-accent/20 border-accent text-emerald-200'
+                              : 'border-white/15 text-gray-300'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            value={subj}
+                            checked={checked}
+                            onChange={(e) => {
+                              setFormData((prev) => {
+                                if (e.target.checked) {
+                                  return {
+                                    ...prev,
+                                    subjects: [...prev.subjects, subj]
+                                  };
+                                }
+                                return {
+                                  ...prev,
+                                  subjects: prev.subjects.filter((s) => s !== subj)
+                                };
+                              });
+                            }}
+                            className="w-3 h-3 accent-emerald-400"
+                          />
+                          <span>{subj}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {formData.subjects.length > 0 && (
+                    <p className="text-[11px] text-gray-400">
+                      {formData.subjects.length} subjects selected
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

@@ -55,14 +55,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: function() { return this.role === 'student'; }
   },
-  subject: {
-    type: String,
-    required: function() { return this.role === 'student'; }
-  },
   subjects: {
     type: [String],
     default: [],
-    required: function() { return this.role === 'teacher'; }
+    required: function() { return this.role === 'teacher' || this.role === 'student'; }
   },
   isActive: {
     type: Boolean,

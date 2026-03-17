@@ -47,7 +47,13 @@ const qrCodeSchema = new mongoose.Schema({
   },
   teacherName: {
     type: String
-  }
+  },
+  studentsAllowed: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
+  ]
 }, {
   timestamps: true
 });

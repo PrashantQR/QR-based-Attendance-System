@@ -1,6 +1,7 @@
 const express = require('express');
 const QRCode = require('qrcode');
 const QRCodeModel = require('../models/QRCode');
+const User = require('../models/User');
 const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
@@ -75,6 +76,20 @@ router.post('/generate', protect, authorize('teacher'), async (req, res) => {
       teacherName: req.user.name
     });
 
+    // Optionally pre-compute allowed students for this session
+    const allowedStudents = await User.find({
+      role: 'student',
+      isActive: true,
+      course,
+      semester,
+      subjects: subject
+    }).select('_id');
+
+    if (allowedStudents.length > 0) {
+      qrCode.studentsAllowed = allowedStudents.map((s) => s._id);
+      await qrCode.save();
+    }
+
     // Generate QR code image
     const qrCodeDataURL = await QRCode.toDataURL(code, {
       errorCorrectionLevel: 'H',
@@ -100,6 +115,9 @@ router.post('/generate', protect, authorize('teacher'), async (req, res) => {
         className: qrCode.className,
         semester: qrCode.semester,
         subject: qrCode.subject,
+        studentsAllowedCount: Array.isArray(qrCode.studentsAllowed)
+          ? qrCode.studentsAllowed.length
+          : 0,
         qrCodeImage: qrCodeDataURL,
         validityMinutes
       }
@@ -189,10 +207,15 @@ router.post('/validate', protect, authorize('student'), async (req, res) => {
       });
     }
 
-    if (req.user.subject && qrCode.subject && req.user.subject !== qrCode.subject) {
+    // Multi-subject support: ensure the session subject is one of student's subjects
+    if (
+      Array.isArray(req.user.subjects) &&
+      qrCode.subject &&
+      !req.user.subjects.includes(qrCode.subject)
+    ) {
       return res.status(403).json({
         error: 'Not allowed for this session',
-        message: 'Your subject does not match this session'
+        message: 'You are not enrolled in this subject'
       });
     }
 
@@ -260,6 +283,47 @@ router.get('/history', protect, authorize('teacher'), async (req, res) => {
     res.status(500).json({
       error: 'Server error',
       message: 'An error occurred while fetching QR history'
+    });
+  }
+});
+
+// @desc    Get students allowed for a QR session based on course/semester/subject
+// @route   GET /api/qr/session/:id/students
+// @access  Private (Teachers only)
+router.get('/session/:id/students', protect, authorize('teacher'), async (req, res) => {
+  try {
+    const qrCode = await QRCodeModel.findOne({
+      _id: req.params.id,
+      generatedBy: req.user._id
+    });
+
+    if (!qrCode) {
+      return res.status(404).json({
+        error: 'QR code not found',
+        message: 'QR code not found or you are not authorized'
+      });
+    }
+
+    const { course, semester, subject } = qrCode;
+
+    const students = await User.find({
+      role: 'student',
+      isActive: true,
+      course,
+      semester,
+      subjects: subject
+    }).select('name studentId email course semester year subjects');
+
+    res.json({
+      success: true,
+      count: students.length,
+      data: students
+    });
+  } catch (error) {
+    console.error('Get session students error:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'An error occurred while fetching students for this session'
     });
   }
 });

@@ -21,7 +21,19 @@ const generateToken = (id) => {
 router.post('/register', async (req, res) => {
   try {
     console.log('[/api/auth/register] BODY DATA:', req.body);
-    const { name, email, mobileNumber, password, role, studentId, department, year, subjects } = req.body;
+    const {
+      name,
+      email,
+      mobileNumber,
+      password,
+      role,
+      studentId,
+      department,
+      course,
+      semester,
+      year,
+      subjects
+    } = req.body;
 
     // Check if user already exists with email
     const userExists = await User.findOne({ email });
@@ -61,6 +73,8 @@ router.post('/register', async (req, res) => {
       role,
       studentId,
       department,
+      course,
+      semester,
       year,
       subjects: Array.isArray(subjects) ? subjects : (subjects ? [subjects] : [])
     });
@@ -145,7 +159,10 @@ router.post('/login', async (req, res) => {
         role: user.role,
         studentId: user.studentId,
         department: user.department,
+        course: user.course,
+        semester: user.semester,
         year: user.year,
+        subjects: user.subjects,
         token: generateToken(user._id)
       }
     });
@@ -268,25 +285,40 @@ router.put('/change-password', protect, async (req, res) => {
   }
 });
 
-// @desc    Get students in teacher's department
+// @desc    Get students filtered by course/semester or teacher's department
 // @route   GET /api/auth/students
 // @access  Private (Teachers only)
 router.get('/students', protect, authorize('teacher'), async (req, res) => {
   try {
-    const teacherDept = req.user.department;
+    const { course, semester } = req.query;
 
-    if (!teacherDept) {
-      return res.status(400).json({
-        error: 'Missing department',
-        message: 'Teacher department is not configured'
-      });
+    const filter = {
+      role: 'student',
+      isActive: true
+    };
+
+    if (course) {
+      filter.course = course;
+    }
+    if (semester) {
+      filter.semester = semester;
     }
 
-    const students = await User.find({ 
-      role: 'student',
-      isActive: true,
-      department: teacherDept
-    }).select('name studentId department year email mobileNumber');
+    // Fallback to teacher's department if no academic filter provided
+    if (!course && !semester) {
+      const teacherDept = req.user.department;
+      if (!teacherDept) {
+        return res.status(400).json({
+          error: 'Missing department',
+          message: 'Teacher department is not configured'
+        });
+      }
+      filter.department = teacherDept;
+    }
+
+    const students = await User.find(filter).select(
+      'name studentId department course semester year email mobileNumber subjects'
+    );
     
     res.json({
       success: true,
