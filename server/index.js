@@ -10,6 +10,7 @@ const authRoutes = require('./routes/auth');
 const qrRoutes = require('./routes/qr');
 const attendanceRoutes = require('./routes/attendance');
 const evaluationRoutes = require('./routes/evaluation');
+const academicRoutes = require('./routes/academic');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -52,6 +53,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/qr', qrRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/evaluation', evaluationRoutes);
+app.use('/api', academicRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

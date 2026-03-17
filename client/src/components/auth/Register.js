@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { academicData, mapSemesterToYear } from '../../constants/academicData';
+import { mapSemesterToYear } from '../../constants/academicData';
 import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaIdCard, FaGraduationCap, FaPhone } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
@@ -18,7 +18,6 @@ const Register = () => {
     semester: '',
     year: '',
     subjects: [],
-    teacherDepartment: '',
     teacherCourse: '',
     teacherSemester: '',
     teacherSubjects: [],
@@ -27,6 +26,10 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [courses, setCourses] = useState([]);
+  const [availableSubjects, setAvailableSubjects] = useState([]);
+  const [teacherCourses, setTeacherCourses] = useState([]);
+  const [availableTeacherSubjects, setAvailableTeacherSubjects] = useState([]);
   
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -81,29 +84,10 @@ const Register = () => {
     });
   };
 
-  const availableSemesters = useMemo(() => {
-    if (!formData.course || !academicData[formData.course]) return [];
-    return Object.keys(academicData[formData.course]);
-  }, [formData.course]);
-
-  const availableSubjects = useMemo(() => {
-    if (!formData.course || !formData.semester) return [];
-    const courseData = academicData[formData.course];
-    if (!courseData) return [];
-    return courseData[formData.semester] || [];
-  }, [formData.course, formData.semester]);
-
-  const availableTeacherSemesters = useMemo(() => {
-    if (!formData.teacherCourse || !academicData[formData.teacherCourse]) return [];
-    return Object.keys(academicData[formData.teacherCourse]);
-  }, [formData.teacherCourse]);
-
-  const availableTeacherSubjects = useMemo(() => {
-    if (!formData.teacherCourse || !formData.teacherSemester) return [];
-    const courseData = academicData[formData.teacherCourse];
-    if (!courseData) return [];
-    return courseData[formData.teacherSemester] || [];
-  }, [formData.teacherCourse, formData.teacherSemester]);
+  const availableSemesters = useMemo(
+    () => ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6', 'Sem 7', 'Sem 8'],
+    []
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -156,12 +140,6 @@ const Register = () => {
         return;
       }
     } else if (formData.role === 'teacher') {
-      if (!formData.teacherDepartment.trim()) {
-        alert('Please enter department');
-        setLoading(false);
-        return;
-      }
-
       if (!formData.teacherCourse) {
         alert('Please select teacher course');
         setLoading(false);
@@ -201,7 +179,7 @@ const Register = () => {
         userData.subjects = formData.subjects;
         userData.department = formData.course;
       } else if (formData.role === 'teacher') {
-        userData.department = formData.teacherDepartment.trim();
+        // department is optional for teachers; we only store course/semester/subjects
         userData.course = formData.teacherCourse;
         userData.semester = formData.teacherSemester;
         userData.subjects = formData.teacherSubjects;
@@ -217,6 +195,73 @@ const Register = () => {
       setLoading(false);
     }
   };
+
+  // Load courses for both student and teacher on mount
+  React.useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const res = await fetch('/api/courses');
+        const json = await res.json();
+        if (json.success) {
+          setCourses(json.data || []);
+          setTeacherCourses(json.data || []);
+        }
+      } catch (e) {
+        console.error('Error fetching courses', e);
+      }
+    };
+    fetchCourses();
+  }, []);
+
+  // Load subjects for student when course+semester selected
+  React.useEffect(() => {
+    const loadSubjects = async () => {
+      if (!formData.course || !formData.semester) {
+        setAvailableSubjects([]);
+        return;
+      }
+      try {
+        const res = await fetch(
+          `/api/subjects?course=${encodeURIComponent(
+            formData.course
+          )}&semester=${encodeURIComponent(formData.semester)}`
+        );
+        const json = await res.json();
+        if (json.success) {
+          setAvailableSubjects((json.data || []).map((s) => s.name));
+        }
+      } catch (e) {
+        console.error('Error fetching subjects', e);
+        setAvailableSubjects([]);
+      }
+    };
+    loadSubjects();
+  }, [formData.course, formData.semester]);
+
+  // Load subjects for teacher when course+semester selected
+  React.useEffect(() => {
+    const loadTeacherSubjects = async () => {
+      if (!formData.teacherCourse || !formData.teacherSemester) {
+        setAvailableTeacherSubjects([]);
+        return;
+      }
+      try {
+        const res = await fetch(
+          `/api/subjects?course=${encodeURIComponent(
+            formData.teacherCourse
+          )}&semester=${encodeURIComponent(formData.teacherSemester)}`
+        );
+        const json = await res.json();
+        if (json.success) {
+          setAvailableTeacherSubjects((json.data || []).map((s) => s.name));
+        }
+      } catch (e) {
+        console.error('Error fetching teacher subjects', e);
+        setAvailableTeacherSubjects([]);
+      }
+    };
+    loadTeacherSubjects();
+  }, [formData.teacherCourse, formData.teacherSemester]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary via-secondary to-black px-4">
@@ -274,16 +319,7 @@ const Register = () => {
           {/* Teacher specific */}
           {formData.role === 'teacher' && (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <InputWithIcon
-                  icon={<FaGraduationCap />}
-                  id="teacherDepartment"
-                  label="Department"
-                  name="teacherDepartment"
-                  value={formData.teacherDepartment}
-                  onChange={handleChange}
-                  placeholder="e.g., MCA"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="block text-xs font-medium text-gray-300">
                     Course
@@ -296,9 +332,9 @@ const Register = () => {
                     className="w-full rounded-xl bg-primary/70 border border-white/10 px-3 py-2.5 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent/70 focus:border-accent/70"
                   >
                     <option value="">Select course</option>
-                    {Object.keys(academicData).map((courseKey) => (
-                      <option key={courseKey} value={courseKey}>
-                        {courseKey}
+                    {teacherCourses.map((c) => (
+                      <option key={c._id} value={c.name}>
+                        {c.name}
                       </option>
                     ))}
                   </select>
@@ -318,7 +354,7 @@ const Register = () => {
                     <option value="">
                       {formData.teacherCourse ? 'Select semester' : 'Select course first'}
                     </option>
-                    {availableTeacherSemesters.map((sem) => (
+                    {availableSemesters.map((sem) => (
                       <option key={sem} value={sem}>
                         {sem}
                       </option>
@@ -327,75 +363,82 @@ const Register = () => {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-medium text-gray-300">
-                    Subjects (multi-select)
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        teacherSubjects: availableTeacherSubjects
-                      }))
-                    }
-                    disabled={availableTeacherSubjects.length === 0}
-                    className="text-[11px] px-2 py-1 rounded-full border border-accent/60 text-accent hover:bg-accent/10 disabled:opacity-50"
-                  >
-                    Select all
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {availableTeacherSubjects.length === 0 && (
-                    <span className="text-xs text-gray-500">
-                      {formData.teacherSemester
-                        ? 'No subjects available'
-                        : 'Select course and semester'}
-                    </span>
-                  )}
-                  {availableTeacherSubjects.map((subj) => {
-                    const checked = formData.teacherSubjects.includes(subj);
-                    return (
-                      <label
-                        key={subj}
-                        className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full border cursor-pointer ${
-                          checked
-                            ? 'bg-accent/20 border-accent text-emerald-200'
-                            : 'border-white/15 text-gray-300'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          value={subj}
-                          checked={checked}
-                          onChange={(e) => {
-                            setFormData((prev) => {
-                              if (e.target.checked) {
+              {formData.teacherSemester ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-medium text-gray-300">
+                      Subjects (multi-select)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData((prev) => {
+                          const all = availableTeacherSubjects;
+                          const current = prev.teacherSubjects;
+                          const next =
+                            current.length === all.length ? [] : all;
+                          return { ...prev, teacherSubjects: next };
+                        })
+                      }
+                      disabled={availableTeacherSubjects.length === 0}
+                      className="text-[11px] px-2 py-1 rounded-full border border-accent/60 text-accent hover:bg-accent/10 disabled:opacity-50"
+                    >
+                      Select all
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {availableTeacherSubjects.length === 0 && (
+                      <span className="text-xs text-gray-500">
+                        No subjects available
+                      </span>
+                    )}
+                    {availableTeacherSubjects.map((subj) => {
+                      const checked = formData.teacherSubjects.includes(subj);
+                      return (
+                        <label
+                          key={subj}
+                          className={`subject-chip flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border cursor-pointer ${
+                            checked
+                              ? 'bg-accent/20 border-accent text-emerald-200'
+                              : 'bg-primary/70 border-white/15 text-gray-300'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            value={subj}
+                            checked={checked}
+                            onChange={(e) => {
+                              setFormData((prev) => {
+                                if (e.target.checked) {
+                                  return {
+                                    ...prev,
+                                    teacherSubjects: [...prev.teacherSubjects, subj]
+                                  };
+                                }
                                 return {
                                   ...prev,
-                                  teacherSubjects: [...prev.teacherSubjects, subj]
+                                  teacherSubjects: prev.teacherSubjects.filter((s) => s !== subj)
                                 };
-                              }
-                              return {
-                                ...prev,
-                                teacherSubjects: prev.teacherSubjects.filter((s) => s !== subj)
-                              };
-                            });
-                          }}
-                          className="w-3 h-3 accent-emerald-400"
-                        />
-                        <span>{subj}</span>
-                      </label>
-                    );
-                  })}
+                              });
+                            }}
+                            className="hidden"
+                          />
+                          <span>{subj}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {formData.teacherSubjects.length > 0 && (
+                    <p className="text-[11px] text-gray-400">
+                      {formData.teacherSubjects.length} subjects selected
+                    </p>
+                  )}
                 </div>
-                {formData.teacherSubjects.length > 0 && (
-                  <p className="text-[11px] text-gray-400">
-                    {formData.teacherSubjects.length} subjects selected
-                  </p>
-                )}
-              </div>
+              ) : (
+                <p className="text-xs text-gray-400">
+                  Select semester to choose subjects
+                </p>
+              )}
             </div>
           )}
 
@@ -462,12 +505,12 @@ const Register = () => {
                       onChange={handleChange}
                       className="w-full rounded-xl bg-primary/70 border border-white/10 pl-9 pr-3 py-2.5 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent/70 focus:border-accent/70"
                     >
-                      <option value="">Select course</option>
-                      {Object.keys(academicData).map((courseKey) => (
-                        <option key={courseKey} value={courseKey}>
-                          {courseKey}
-                        </option>
-                      ))}
+                    <option value="">Select course</option>
+                    {courses.map((c) => (
+                      <option key={c._id} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
                     </select>
                   </div>
                 </div>
@@ -511,74 +554,82 @@ const Register = () => {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-medium text-gray-300">
-                      Subjects (multi-select)
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          subjects: availableSubjects
-                        }))
-                      }
-                      disabled={availableSubjects.length === 0}
-                      className="text-[11px] px-2 py-1 rounded-full border border-accent/60 text-accent hover:bg-accent/10 disabled:opacity-50"
-                    >
-                      Select all
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {!formData.semester && (
-                      <span className="text-xs text-gray-500">Select semester first</span>
-                    )}
-                    {formData.semester && availableSubjects.length === 0 && (
-                      <span className="text-xs text-gray-500">No subjects available</span>
-                    )}
-                    {availableSubjects.map((subj) => {
-                      const checked = formData.subjects.includes(subj);
-                      return (
-                        <label
-                          key={subj}
-                          className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full border cursor-pointer ${
-                            checked
-                              ? 'bg-accent/20 border-accent text-emerald-200'
-                              : 'border-white/15 text-gray-300'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            value={subj}
-                            checked={checked}
-                            onChange={(e) => {
-                              setFormData((prev) => {
-                                if (e.target.checked) {
+                {formData.semester ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-medium text-gray-300">
+                        Subjects (multi-select)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormData((prev) => {
+                            const all = availableSubjects;
+                            const current = prev.subjects;
+                            const next =
+                              current.length === all.length ? [] : all;
+                            return { ...prev, subjects: next };
+                          })
+                        }
+                        disabled={availableSubjects.length === 0}
+                        className="text-[11px] px-2 py-1 rounded-full border border-accent/60 text-accent hover:bg-accent/10 disabled:opacity-50"
+                      >
+                        Select all
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {availableSubjects.length === 0 && (
+                        <span className="text-xs text-gray-500">
+                          No subjects available
+                        </span>
+                      )}
+                      {availableSubjects.map((subj) => {
+                        const checked = formData.subjects.includes(subj);
+                        return (
+                          <label
+                            key={subj}
+                            className={`subject-chip flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border cursor-pointer ${
+                              checked
+                                ? 'bg-accent/20 border-accent text-emerald-200'
+                                : 'bg-primary/70 border-white/15 text-gray-300'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              value={subj}
+                              checked={checked}
+                              onChange={(e) => {
+                                setFormData((prev) => {
+                                  if (e.target.checked) {
+                                    return {
+                                      ...prev,
+                                      subjects: [...prev.subjects, subj]
+                                    };
+                                  }
                                   return {
                                     ...prev,
-                                    subjects: [...prev.subjects, subj]
+                                    subjects: prev.subjects.filter((s) => s !== subj)
                                   };
-                                }
-                                return {
-                                  ...prev,
-                                  subjects: prev.subjects.filter((s) => s !== subj)
-                                };
-                              });
-                            }}
-                            className="w-3 h-3 accent-emerald-400"
-                          />
-                          <span>{subj}</span>
-                        </label>
-                      );
-                    })}
+                                });
+                              }}
+                              className="hidden"
+                            />
+                            <span>{subj}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {formData.subjects.length > 0 && (
+                      <p className="text-[11px] text-gray-400">
+                        {formData.subjects.length} subjects selected
+                      </p>
+                    )}
                   </div>
-                  {formData.subjects.length > 0 && (
-                    <p className="text-[11px] text-gray-400">
-                      {formData.subjects.length} subjects selected
-                    </p>
-                  )}
-                </div>
+                ) : (
+                  <p className="text-xs text-gray-400">
+                    Select semester to choose subjects
+                  </p>
+                )}
               </div>
             </div>
           )}
