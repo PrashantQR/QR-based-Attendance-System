@@ -58,6 +58,20 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'QR Attendance System is running' });
 });
 
+// Serve React client in production
+if (process.env.NODE_ENV === 'production') {
+  const clientBuildPath = path.join(__dirname, '..', 'client', 'build');
+  app.use(express.static(clientBuildPath));
+
+  // For any non-API route, send back React's index.html
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) {
+      return next();
+    }
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
+  });
+}
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -67,8 +81,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
+// 404 handler for unknown API routes
+app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
