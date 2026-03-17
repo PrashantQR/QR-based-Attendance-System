@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { academicData, mapSemesterToYear } from '../../constants/academicData';
 import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaIdCard, FaGraduationCap, FaPhone } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
@@ -13,11 +14,10 @@ const Register = () => {
     confirmPassword: '',
     role: 'student',
     studentId: '',
-    classCourse: '',
-    customCourse: '',
-    stream: '',
-    branch: '',
-    year: 1,
+    course: '',
+    semester: '',
+    year: '',
+    subject: '',
     teacherDepartment: '',
     teacherSubject: '',
     teacherCustomSubject: ''
@@ -33,15 +33,24 @@ const Register = () => {
     const { name, value } = e.target;
 
     setFormData((prev) => {
-      // When class / course changes, reset dependent fields and year to 1
-      if (name === 'classCourse') {
+      // When course changes, reset dependent academic fields
+      if (name === 'course') {
         return {
           ...prev,
-          classCourse: value,
-          stream: '',
-          branch: '',
-          customCourse: '',
-          year: 1
+          course: value,
+          semester: '',
+          subject: '',
+          year: ''
+        };
+      }
+
+      if (name === 'semester') {
+        const computedYear = mapSemesterToYear(value);
+        return {
+          ...prev,
+          semester: value,
+          subject: '',
+          year: computedYear
         };
       }
 
@@ -51,6 +60,18 @@ const Register = () => {
       };
     });
   };
+
+  const availableSemesters = useMemo(() => {
+    if (!formData.course || !academicData[formData.course]) return [];
+    return Object.keys(academicData[formData.course]);
+  }, [formData.course]);
+
+  const availableSubjects = useMemo(() => {
+    if (!formData.course || !formData.semester) return [];
+    const courseData = academicData[formData.course];
+    if (!courseData) return [];
+    return courseData[formData.semester] || [];
+  }, [formData.course, formData.semester]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -78,35 +99,27 @@ const Register = () => {
       return;
     }
 
-    // Additional validation for class / course specific fields (students)
+    // Additional validation for academic fields (students)
     if (formData.role === 'student') {
-      const classCourse = formData.classCourse;
-
-      if (!classCourse) {
-        alert('Please select Class / Course');
+      if (!formData.course) {
+        alert('Please select Course');
         setLoading(false);
         return;
       }
 
-      const isOtherCourse = classCourse === 'OTHER';
-
-      const needsStream = classCourse === '11th Standard' || classCourse === '12th Standard';
-      const needsBranch = ['BE', 'BTech', 'MTech'].includes(classCourse);
-
-      if (isOtherCourse && !formData.customCourse.trim()) {
-        alert('Please enter course name');
+      if (!formData.semester) {
+        alert('Please select Semester');
         setLoading(false);
         return;
       }
 
-      if (needsStream && !formData.stream) {
-        alert('Please select Stream');
+      if (!formData.subject) {
+        alert('Please select Subject');
         setLoading(false);
         return;
       }
-
-      if (needsBranch && !formData.branch) {
-        alert('Please select Branch');
+      if (!formData.year) {
+        alert('Year could not be determined from semester');
         setLoading(false);
         return;
       }
@@ -143,23 +156,12 @@ const Register = () => {
 
       // Add student-specific fields if role is student
       if (formData.role === 'student') {
-        const classCourse = formData.classCourse;
-        const needsStream = classCourse === '11th Standard' || classCourse === '12th Standard';
-        const needsBranch = ['BE', 'BTech', 'MTech'].includes(classCourse);
-
-        let departmentValue = classCourse === 'OTHER'
-          ? formData.customCourse.trim()
-          : classCourse;
-
-        if (needsStream && formData.stream) {
-          departmentValue = `${classCourse} - ${formData.stream}`;
-        } else if (needsBranch && formData.branch) {
-          departmentValue = `${classCourse} - ${formData.branch}`;
-        }
-
         userData.studentId = formData.studentId;
-        userData.department = departmentValue;
-        userData.year = parseInt(formData.year);
+        userData.course = formData.course;
+        userData.semester = formData.semester;
+        userData.year = formData.year;
+        userData.subject = formData.subject;
+        userData.department = formData.course;
       } else if (formData.role === 'teacher') {
         const chosenSubject =
           formData.teacherSubject === 'OTHER'
@@ -323,7 +325,7 @@ const Register = () => {
           {/* Student-specific */}
           {formData.role === 'student' && (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <InputWithIcon
                   icon={<FaIdCard />}
                   id="studentId"
@@ -333,11 +335,97 @@ const Register = () => {
                   onChange={handleChange}
                   placeholder="Enter student ID"
                 />
-                {/* Class/Course + variations use existing logic but Tailwind selects */}
-                {/* For brevity we keep the existing select lists but wrapped in Tailwind classes */}
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-300">
+                    Course
+                  </label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-3 flex items-center text-gray-500 text-sm">
+                      <FaGraduationCap />
+                    </span>
+                    <select
+                      id="course"
+                      name="course"
+                      value={formData.course}
+                      onChange={handleChange}
+                      className="w-full rounded-xl bg-primary/70 border border-white/10 pl-9 pr-3 py-2.5 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent/70 focus:border-accent/70"
+                    >
+                      <option value="">Select course</option>
+                      {Object.keys(academicData).map((courseKey) => (
+                        <option key={courseKey} value={courseKey}>
+                          {courseKey}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
-              {/* For full migration, you’d similarly wrap the classCourse/stream/branch/year selects
-                  in Tailwind-styled containers, mirroring the patterns above. */}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-300">
+                    Semester
+                  </label>
+                  <select
+                    id="semester"
+                    name="semester"
+                    value={formData.semester}
+                    onChange={handleChange}
+                    disabled={!formData.course}
+                    className="w-full rounded-xl bg-primary/70 border border-white/10 px-3 py-2.5 text-sm text-gray-100 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-accent/70 focus:border-accent/70"
+                  >
+                    <option value="">
+                      {formData.course ? 'Select semester' : 'Select course first'}
+                    </option>
+                    {availableSemesters.map((sem) => (
+                      <option key={sem} value={sem}>
+                        {sem}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-300">
+                    Year
+                  </label>
+                  <input
+                    id="year"
+                    name="year"
+                    value={formData.year}
+                    readOnly
+                    placeholder="Auto-selected from semester"
+                    className="w-full rounded-xl bg-primary/40 border border-white/10 px-3 py-2.5 text-sm text-gray-300 placeholder-gray-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-300">
+                    Subject
+                  </label>
+                  <select
+                    id="subject"
+                    name="subject"
+                    value={formData.subject}
+                    onChange={handleChange}
+                    disabled={!formData.semester || availableSubjects.length === 0}
+                    className="w-full rounded-xl bg-primary/70 border border-white/10 px-3 py-2.5 text-sm text-gray-100 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-accent/70 focus:border-accent/70"
+                  >
+                    <option value="">
+                      {!formData.semester
+                        ? 'Select semester first'
+                        : availableSubjects.length === 0
+                        ? 'No subjects available'
+                        : 'Select subject'}
+                    </option>
+                    {availableSubjects.map((subj) => (
+                      <option key={subj} value={subj}>
+                        {subj}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
           )}
 

@@ -39,15 +39,25 @@ const userSchema = new mongoose.Schema({
     sparse: true,
     required: function() { return this.role === 'student'; }
   },
+  course: {
+    type: String,
+    required: function() { return this.role === 'student'; }
+  },
+  semester: {
+    type: String,
+    required: function() { return this.role === 'student'; }
+  },
   department: {
     type: String,
     required: function() { return this.role === 'student'; }
   },
   year: {
-    type: Number,
-    required: function() { return this.role === 'student'; },
-    min: [1, 'Year must be at least 1'],
-    max: [5, 'Year cannot exceed 5']
+    type: String,
+    required: function() { return this.role === 'student'; }
+  },
+  subject: {
+    type: String,
+    required: function() { return this.role === 'student'; }
   },
   subjects: {
     type: [String],

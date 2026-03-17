@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { FaQrcode, FaCopy, FaDownload, FaClock } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
+import { academicData } from '../../constants/academicData';
 
 const QRGenerator = () => {
   const { user, isAuthenticated, token } = useAuth();
@@ -11,6 +12,8 @@ const QRGenerator = () => {
     description: '',
     location: '',
     className: '',
+    course: '',
+    semester: '',
     subject: '',
     validityMinutes: 10
   });
@@ -18,11 +21,44 @@ const QRGenerator = () => {
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
+    const { name, value } = e.target;
+    setFormData((prev) => {
+      if (name === 'course') {
+        return {
+          ...prev,
+          course: value,
+          semester: '',
+          subject: ''
+        };
+      }
+      if (name === 'semester') {
+        return {
+          ...prev,
+          semester: value,
+          subject: ''
+        };
+      }
+      return {
+        ...prev,
+        [name]: value
+      };
     });
   };
+
+  const availableSemesters = useMemo(() => {
+    if (!formData.course || !academicData[formData.course]) return [];
+    return Object.keys(academicData[formData.course]);
+  }, [formData.course]);
+
+  const availableSubjects = useMemo(() => {
+    if (!formData.course || !formData.semester) return [];
+    const courseData = academicData[formData.course];
+    if (!courseData) return [];
+    const fromAcademic = courseData[formData.semester] || [];
+    // Optionally intersect with teacherSubjects if they are defined
+    if (teacherSubjects.length === 0) return fromAcademic;
+    return fromAcademic.filter((s) => teacherSubjects.includes(s));
+  }, [formData.course, formData.semester, teacherSubjects]);
 
   const generateQR = async (e) => {
     e.preventDefault();
@@ -42,6 +78,18 @@ const QRGenerator = () => {
       return;
     }
 
+    if (!formData.course) {
+      toast.error('Please select a course');
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.semester) {
+      toast.error('Please select a semester');
+      setLoading(false);
+      return;
+    }
+
     if (!formData.subject) {
       toast.error('Please select a subject');
       setLoading(false);
@@ -54,6 +102,8 @@ const QRGenerator = () => {
       const payload = {
         description: formData.description,
         location: formData.location,
+        course: formData.course,
+        semester: formData.semester,
         className: formData.className,
         subject: formData.subject,
         validityMinutes: formData.validityMinutes
@@ -205,19 +255,65 @@ const QRGenerator = () => {
                 </div>
 
                 <div className="mb-3">
-                  <label htmlFor="subject" className="form-label">
-                    Subject
-                  </label>
+                  <label className="form-label">Course</label>
+                  <select
+                    id="course"
+                    name="course"
+                    className="form-select"
+                    value={formData.course}
+                    onChange={handleChange}
+                  >
+                    <option value="">Select Course</option>
+                    {Object.keys(academicData).map((courseKey) => (
+                      <option key={courseKey} value={courseKey}>
+                        {courseKey}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label">Semester</label>
+                  <select
+                    id="semester"
+                    name="semester"
+                    className="form-select"
+                    value={formData.semester}
+                    onChange={handleChange}
+                    disabled={!formData.course}
+                  >
+                    <option value="">
+                      {formData.course ? 'Select Semester' : 'Select course first'}
+                    </option>
+                    {availableSemesters.map((sem) => (
+                      <option key={sem} value={sem}>
+                        {sem}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label">Subject</label>
                   <select
                     id="subject"
                     name="subject"
                     className="form-select"
                     value={formData.subject}
                     onChange={handleChange}
+                    disabled={!formData.semester || availableSubjects.length === 0}
                   >
-                    <option value="">Select Subject</option>
-                    {teacherSubjects.map((s) => (
-                      <option key={s} value={s}>{s}</option>
+                    <option value="">
+                      {!formData.semester
+                        ? 'Select semester first'
+                        : availableSubjects.length === 0
+                        ? 'No subjects available'
+                        : 'Select subject'}
+                    </option>
+                    {availableSubjects.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
                     ))}
                   </select>
                 </div>

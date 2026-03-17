@@ -20,12 +20,12 @@ const generateRandomCode = () => {
 // @access  Private (Teachers only)
 router.post('/generate', protect, authorize('teacher'), async (req, res) => {
   try {
-    const { description, location, className, subject, validityMinutes = 10 } = req.body;
+    const { description, location, className, course, semester, subject, validityMinutes = 10 } = req.body;
 
-    if (!subject || !className) {
+    if (!course || !semester || !subject || !className) {
       return res.status(400).json({
         error: 'Validation error',
-        message: 'Subject and department/class are required'
+        message: 'Course, semester, subject and department/class are required'
       });
     }
 
@@ -68,8 +68,9 @@ router.post('/generate', protect, authorize('teacher'), async (req, res) => {
       expiresAt,
       description: description || 'Daily attendance QR code',
       location: location || 'Classroom',
-      course: subject || 'General',
+      course,
       className,
+      semester,
       subject,
       teacherName: req.user.name
     });
@@ -96,6 +97,9 @@ router.post('/generate', protect, authorize('teacher'), async (req, res) => {
         description: qrCode.description,
         location: qrCode.location,
         course: qrCode.course,
+        className: qrCode.className,
+        semester: qrCode.semester,
+        subject: qrCode.subject,
         qrCodeImage: qrCodeDataURL,
         validityMinutes
       }
@@ -167,6 +171,28 @@ router.post('/validate', protect, authorize('student'), async (req, res) => {
       return res.status(400).json({
         error: 'QR code expired',
         message: 'This QR code has expired'
+      });
+    }
+
+    // Academic matching: ensure student belongs to this session's course / semester / subject
+    if (req.user.course && qrCode.course && req.user.course !== qrCode.course) {
+      return res.status(403).json({
+        error: 'Not allowed for this session',
+        message: 'Your course does not match this session'
+      });
+    }
+
+    if (req.user.semester && qrCode.semester && req.user.semester !== qrCode.semester) {
+      return res.status(403).json({
+        error: 'Not allowed for this session',
+        message: 'Your semester does not match this session'
+      });
+    }
+
+    if (req.user.subject && qrCode.subject && req.user.subject !== qrCode.subject) {
+      return res.status(403).json({
+        error: 'Not allowed for this session',
+        message: 'Your subject does not match this session'
       });
     }
 

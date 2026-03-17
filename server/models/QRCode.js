@@ -35,6 +35,18 @@ const qrCodeSchema = new mongoose.Schema({
   course: {
     type: String,
     default: 'General'
+  },
+  className: {
+    type: String
+  },
+  semester: {
+    type: String
+  },
+  subject: {
+    type: String
+  },
+  teacherName: {
+    type: String
   }
 }, {
   timestamps: true
