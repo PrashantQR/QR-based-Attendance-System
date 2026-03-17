@@ -67,7 +67,7 @@ const Navbar = () => {
               <>
                 <li className="nav-item">
                   <Link className="nav-link" to="/student/scan">
-                    Scan QR
+                    Generate QR
                   </Link>
                 </li>
                 <li className="nav-item">

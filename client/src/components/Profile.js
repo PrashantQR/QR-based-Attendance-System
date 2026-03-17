@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { FaUser, FaEnvelope, FaIdCard, FaGraduationCap, FaLock, FaPhone } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaLock, FaPhone } from 'react-icons/fa';
 
 const Profile = () => {
   const { user, updateProfile, changePassword } = useAuth();
@@ -8,9 +8,7 @@ const Profile = () => {
   const [profileData, setProfileData] = useState({
     name: user?.name || '',
     email: user?.email || '',
-    mobileNumber: user?.mobileNumber || '',
-    department: user?.department || '',
-    year: user?.year || 1
+    mobileNumber: user?.mobileNumber || ''
   });
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -38,16 +36,7 @@ const Profile = () => {
     setLoading(true);
 
     try {
-      const result = await updateProfile(profileData);
-      if (result.success) {
-        setProfileData({
-          name: user?.name || '',
-          email: user?.email || '',
-          mobileNumber: user?.mobileNumber || '',
-          department: user?.department || '',
-          year: user?.year || 1
-        });
-      }
+      await updateProfile(profileData);
     } catch (error) {
       console.error('Profile update error:', error);
     } finally {
@@ -57,7 +46,7 @@ const Profile = () => {
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       alert('New passwords do not match');
       return;
@@ -71,14 +60,15 @@ const Profile = () => {
     setLoading(true);
 
     try {
-      const result = await changePassword(passwordData.currentPassword, passwordData.newPassword);
-      if (result.success) {
-        setPasswordData({
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: ''
-        });
-      }
+      await changePassword(
+        passwordData.currentPassword,
+        passwordData.newPassword
+      );
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
     } catch (error) {
       console.error('Password change error:', error);
     } finally {
@@ -86,291 +76,188 @@ const Profile = () => {
     }
   };
 
+  const subjects =
+    Array.isArray(user?.subjects) && user.subjects.length > 0
+      ? user.subjects
+      : [];
+
   return (
-    <div>
-      <div className="row mb-4">
-        <div className="col-12">
-          <h2 className="fw-bold text-white">Profile</h2>
-          <p className="text-white-50">Manage your account information</p>
-        </div>
+    <div className="max-w-3xl mx-auto px-6 py-8">
+      <h1 className="text-2xl font-bold text-white mb-2">Profile</h1>
+      <p className="text-gray-400 mb-6">
+        Manage your account information
+      </p>
+
+      {/* Tabs */}
+      <div className="flex mb-4 border-b border-slate-700">
+        <button
+          type="button"
+          onClick={() => setActiveTab('profile')}
+          className={`px-4 py-2 text-sm font-medium ${
+            activeTab === 'profile'
+              ? 'text-emerald-400 border-b-2 border-emerald-400'
+              : 'text-gray-400 hover:text-gray-200'
+          }`}
+        >
+          Profile Info
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('password')}
+          className={`px-4 py-2 text-sm font-medium ${
+            activeTab === 'password'
+              ? 'text-emerald-400 border-b-2 border-emerald-400'
+              : 'text-gray-400 hover:text-gray-200'
+          }`}
+        >
+          Change Password
+        </button>
       </div>
 
-      <div className="row">
-        <div className="col-md-3">
-          <div className="card">
-            <div className="card-body">
-              <div className="nav flex-column nav-pills">
-                <button
-                  className={`nav-link ${activeTab === 'profile' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('profile')}
-                >
-                  <FaUser className="me-2" />
-                  Profile Information
-                </button>
-                <button
-                  className={`nav-link ${activeTab === 'password' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('password')}
-                >
-                  <FaLock className="me-2" />
-                  Change Password
-                </button>
+      <div className="bg-slate-900/80 rounded-xl p-6 shadow-lg border border-slate-700">
+        {activeTab === 'profile' ? (
+          <form onSubmit={handleProfileSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm text-gray-400">Full Name</label>
+                <div className="mt-1 flex items-center gap-2 rounded-lg bg-slate-950 border border-slate-700 px-3">
+                  <FaUser className="text-gray-500 text-sm" />
+                  <input
+                    name="name"
+                    value={profileData.name}
+                    onChange={handleProfileChange}
+                    className="w-full py-2 bg-transparent text-sm text-gray-100 focus:outline-none"
+                    placeholder="Enter your full name"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400">Email</label>
+                <div className="mt-1 flex items-center gap-2 rounded-lg bg-slate-950 border border-slate-700 px-3">
+                  <FaEnvelope className="text-gray-500 text-sm" />
+                  <input
+                    name="email"
+                    type="email"
+                    value={profileData.email}
+                    onChange={handleProfileChange}
+                    className="w-full py-2 bg-transparent text-sm text-gray-100 focus:outline-none"
+                    placeholder="Enter your email"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400">Mobile</label>
+                <div className="mt-1 flex items-center gap-2 rounded-lg bg-slate-950 border border-slate-700 px-3">
+                  <FaPhone className="text-gray-500 text-sm" />
+                  <input
+                    name="mobileNumber"
+                    type="tel"
+                    maxLength={10}
+                    value={profileData.mobileNumber}
+                    onChange={handleProfileChange}
+                    className="w-full py-2 bg-transparent text-sm text-gray-100 focus:outline-none"
+                    placeholder="Enter your 10-digit mobile number"
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        <div className="col-md-9">
-          <div className="card">
-            <div className="card-body">
-              {activeTab === 'profile' ? (
-                <div>
-                  <h5 className="card-title mb-3">Profile Information</h5>
-                  <form onSubmit={handleProfileSubmit}>
-                    <div className="row">
-                      <div className="col-md-6 mb-3">
-                        <label htmlFor="name" className="form-label">
-                          Full Name
-                        </label>
-                        <div className="input-group">
-                          <span className="input-group-text">
-                            <FaUser />
-                          </span>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="name"
-                            name="name"
-                            value={profileData.name}
-                            onChange={handleProfileChange}
-                            required
-                          />
-                        </div>
-                      </div>
+            {/* Subjects chips */}
+            {user?.role === 'teacher' && (
+              <div className="mt-2">
+                <label className="text-sm text-gray-400">Subjects</label>
+                {subjects.length === 0 ? (
+                  <p className="text-xs text-gray-500 mt-2">
+                    No subjects specified
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {subjects.map((sub) => (
+                      <span
+                        key={sub}
+                        className="bg-emerald-400 text-slate-900 px-3 py-1 rounded-full text-xs font-medium"
+                      >
+                        {sub}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
-                      <div className="col-md-6 mb-3">
-                        <label htmlFor="email" className="form-label">
-                          Email Address
-                        </label>
-                        <div className="input-group">
-                          <span className="input-group-text">
-                            <FaEnvelope />
-                          </span>
-                          <input
-                            type="email"
-                            className="form-control"
-                            id="email"
-                            name="email"
-                            value={profileData.email}
-                            onChange={handleProfileChange}
-                            required
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mb-3">
-                      <label htmlFor="mobileNumber" className="form-label">
-                        Mobile Number
-                      </label>
-                      <div className="input-group">
-                        <span className="input-group-text">
-                          <FaPhone />
-                        </span>
-                        <input
-                          type="tel"
-                          className="form-control"
-                          id="mobileNumber"
-                          name="mobileNumber"
-                          value={profileData.mobileNumber}
-                          onChange={handleProfileChange}
-                          required
-                          placeholder="Enter your 10-digit mobile number"
-                          maxLength="10"
-                        />
-                      </div>
-                    </div>
-
-                    {user?.role === 'student' && (
-                      <>
-                        <div className="row">
-                          <div className="col-md-6 mb-3">
-                            <label htmlFor="studentId" className="form-label">
-                              Student ID
-                            </label>
-                            <div className="input-group">
-                              <span className="input-group-text">
-                                <FaIdCard />
-                              </span>
-                              <input
-                                type="text"
-                                className="form-control"
-                                id="studentId"
-                                value={user?.studentId}
-                                disabled
-                              />
-                            </div>
-                            <small className="text-muted">Student ID cannot be changed</small>
-                          </div>
-
-                          <div className="col-md-6 mb-3">
-                            <label htmlFor="department" className="form-label">
-                              Department
-                            </label>
-                            <div className="input-group">
-                              <span className="input-group-text">
-                                <FaGraduationCap />
-                              </span>
-                              <input
-                                type="text"
-                                className="form-control"
-                                id="department"
-                                name="department"
-                                value={profileData.department}
-                                onChange={handleProfileChange}
-                                required
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mb-3">
-                          <label htmlFor="year" className="form-label">
-                            Year
-                          </label>
-                          <select
-                            className="form-select"
-                            id="year"
-                            name="year"
-                            value={profileData.year}
-                            onChange={handleProfileChange}
-                            required
-                          >
-                            <option value={1}>1st Year</option>
-                            <option value={2}>2nd Year</option>
-                            
-                          </select>
-                        </div>
-                      </>
-                    )}
-
-                    {user?.role === 'teacher' && (
-                      <div className="mb-3">
-                        <label className="form-label">
-                          Subjects
-                        </label>
-                        <div>
-                          <span>
-                            {Array.isArray(user?.subjects) && user.subjects.length > 0
-                              ? user.subjects.join(', ')
-                              : 'No subjects specified'}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    <button
-                      type="submit"
-                      className="btn btn-primary"
-                      disabled={loading}
-                    >
-                      {loading ? (
-                        <>
-                          <span className="spinner-border spinner-border-sm me-2" />
-                          Updating...
-                        </>
-                      ) : (
-                        'Update Profile'
-                      )}
-                    </button>
-                  </form>
-                </div>
-              ) : (
-                <div>
-                  <h5 className="card-title mb-3">Change Password</h5>
-                  <form onSubmit={handlePasswordSubmit}>
-                    <div className="mb-3">
-                      <label htmlFor="currentPassword" className="form-label">
-                        Current Password
-                      </label>
-                      <div className="input-group">
-                        <span className="input-group-text">
-                          <FaLock />
-                        </span>
-                        <input
-                          type="password"
-                          className="form-control"
-                          id="currentPassword"
-                          name="currentPassword"
-                          value={passwordData.currentPassword}
-                          onChange={handlePasswordChange}
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mb-3">
-                      <label htmlFor="newPassword" className="form-label">
-                        New Password
-                      </label>
-                      <div className="input-group">
-                        <span className="input-group-text">
-                          <FaLock />
-                        </span>
-                        <input
-                          type="password"
-                          className="form-control"
-                          id="newPassword"
-                          name="newPassword"
-                          value={passwordData.newPassword}
-                          onChange={handlePasswordChange}
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mb-4">
-                      <label htmlFor="confirmPassword" className="form-label">
-                        Confirm New Password
-                      </label>
-                      <div className="input-group">
-                        <span className="input-group-text">
-                          <FaLock />
-                        </span>
-                        <input
-                          type="password"
-                          className="form-control"
-                          id="confirmPassword"
-                          name="confirmPassword"
-                          value={passwordData.confirmPassword}
-                          onChange={handlePasswordChange}
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="btn btn-primary"
-                      disabled={loading}
-                    >
-                      {loading ? (
-                        <>
-                          <span className="spinner-border spinner-border-sm me-2" />
-                          Changing Password...
-                        </>
-                      ) : (
-                        'Change Password'
-                      )}
-                    </button>
-                  </form>
-                </div>
-              )}
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-4 w-full bg-emerald-400 hover:bg-emerald-500 text-slate-900 py-2 rounded-lg font-semibold text-sm transition disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Updating...' : 'Update Profile'}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            <div>
+              <label className="text-sm text-gray-400">Current Password</label>
+              <div className="mt-1 flex items-center gap-2 rounded-lg bg-slate-950 border border-slate-700 px-3">
+                <FaLock className="text-gray-500 text-sm" />
+                <input
+                  type="password"
+                  name="currentPassword"
+                  value={passwordData.currentPassword}
+                  onChange={handlePasswordChange}
+                  className="w-full py-2 bg-transparent text-sm text-gray-100 focus:outline-none"
+                  placeholder="Enter current password"
+                />
+              </div>
             </div>
-          </div>
-        </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm text-gray-400">New Password</label>
+                <div className="mt-1 flex items-center gap-2 rounded-lg bg-slate-950 border border-slate-700 px-3">
+                  <FaLock className="text-gray-500 text-sm" />
+                  <input
+                    type="password"
+                    name="newPassword"
+                    value={passwordData.newPassword}
+                    onChange={handlePasswordChange}
+                    className="w-full py-2 bg-transparent text-sm text-gray-100 focus:outline-none"
+                    placeholder="Enter new password"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400">
+                  Confirm New Password
+                </label>
+                <div className="mt-1 flex items-center gap-2 rounded-lg bg-slate-950 border border-slate-700 px-3">
+                  <FaLock className="text-gray-500 text-sm" />
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    value={passwordData.confirmPassword}
+                    onChange={handlePasswordChange}
+                    className="w-full py-2 bg-transparent text-sm text-gray-100 focus:outline-none"
+                    placeholder="Re-enter new password"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-4 w-full bg-emerald-400 hover:bg-emerald-500 text-slate-900 py-2 rounded-lg font-semibold text-sm transition disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Changing Password...' : 'Change Password'}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );
 };
 
-export default Profile; 
+export default Profile;
