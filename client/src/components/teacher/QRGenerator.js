@@ -317,192 +317,195 @@ const QRGenerator = () => {
       <div className="grid md:grid-cols-2 gap-6">
         {/* Left: QR Settings form */}
         <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5 space-y-4">
-            <h5 className="text-sm font-semibold mb-3 text-white">
-              QR Code Settings
-            </h5>
-              <form onSubmit={generateQR}>
-                <div className="mb-3">
-                  <label className="block text-xs text-gray-400 mb-1">
-                    Teacher
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
-                    value={user?.name || ''}
-                    readOnly
-                  />
-                </div>
-                <div className="mb-3">
-                  <label
-                    htmlFor="description"
-                    className="block text-xs text-gray-400 mb-1"
-                  >
-                    Description
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
-                    id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    placeholder="e.g., Morning Class Attendance"
-                  />
-                </div>
+          <h5 className="text-sm font-semibold mb-3 text-white">
+            QR Code Settings
+          </h5>
+          <form onSubmit={generateQR}>
+            <div className="mb-3">
+              <label className="block text-xs text-gray-400 mb-1">
+                Teacher
+              </label>
+              <input
+                type="text"
+                className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+                value={user?.name || ''}
+                readOnly
+              />
+            </div>
 
-                <div className="mb-3">
-                  <label
-                    htmlFor="location"
-                    className="block text-xs text-gray-400 mb-1"
-                  >
-                    Location
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
-                    id="location"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleChange}
-                    placeholder="e.g., Room 101"
-                  />
-                </div>
+            <div className="mb-3">
+              <label
+                htmlFor="description"
+                className="block text-xs text-gray-400 mb-1"
+              >
+                Description
+              </label>
+              <input
+                type="text"
+                className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="e.g., Morning Class Attendance"
+              />
+            </div>
 
-                <div className="mb-3">
-                  <label className="block text-xs text-gray-400 mb-1">
-                    Course
-                  </label>
-                  <select
-                    id="course"
-                    name="course"
-                    className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
-                    value={formData.course}
-                    onChange={handleChange}
-                  >
-                    <option value="">Select Course</option>
-                    {courses.map((course) => (
-                      <option key={course} value={course}>
-                        {course}
-                      </option>
-                    ))}
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                {formData.course === 'Other' && (
-                  <div className="mb-3">
-                    <label className="block text-xs text-gray-400 mb-1">
-                      Custom Course
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
-                      placeholder="Enter custom course"
-                      value={formData.customCourse}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          customCourse: e.target.value
-                        }))
-                      }
-                    />
-                  </div>
-                )}
+            <div className="mb-3">
+              <label
+                htmlFor="location"
+                className="block text-xs text-gray-400 mb-1"
+              >
+                Location
+              </label>
+              <input
+                type="text"
+                className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+                id="location"
+                name="location"
+                value={formData.location}
+                onChange={handleChange}
+                placeholder="e.g., Room 101"
+              />
+            </div>
 
-                <div className="mb-3">
-                  <label className="block text-xs text-gray-400 mb-1">
-                    Semester
-                  </label>
-                  <select
-                    id="semester"
-                    name="semester"
-                    className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
-                    value={formData.semester}
-                    onChange={handleChange}
-                    disabled={!finalCourse}
-                  >
-                    <option value="">
-                      {finalCourse ? 'Select Semester' : 'Select course first'}
-                    </option>
-                    {qrSemesters.map((sem) => (
-                      <option key={sem} value={sem}>
-                        {sem}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            <div className="mb-3">
+              <label className="block text-xs text-gray-400 mb-1">
+                Course
+              </label>
+              <select
+                id="course"
+                name="course"
+                className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+                value={formData.course}
+                onChange={handleChange}
+              >
+                <option value="">Select Course</option>
+                {courses.map((course) => (
+                  <option key={course} value={course}>
+                    {course}
+                  </option>
+                ))}
+                <option value="Other">Other</option>
+              </select>
+            </div>
 
-                <div className="mb-3">
-                  <label className="block text-xs text-gray-400 mb-1">
-                    Subject
-                  </label>
-                  <select
-                    id="subject"
-                    name="subject"
-                    className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
-                    value={formData.subject}
-                    onChange={handleChange}
-                    disabled={!formData.semester || availableSubjects.length === 0}
-                  >
-                    <option value="">
-                      {!formData.semester
-                        ? 'Select semester first'
-                        : availableSubjects.length === 0
-                        ? 'No subjects available'
-                        : 'Select subject'}
-                    </option>
-                    {availableSubjects.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            {formData.course === 'Other' && (
+              <div className="mb-3">
+                <label className="block text-xs text-gray-400 mb-1">
+                  Custom Course
+                </label>
+                <input
+                  type="text"
+                  className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+                  placeholder="Enter custom course"
+                  value={formData.customCourse}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      customCourse: e.target.value
+                    }))
+                  }
+                />
+              </div>
+            )}
 
-                <div className="mb-4">
-                  <label
-                    htmlFor="validityMinutes"
-                    className="block text-xs text-gray-400 mb-1"
-                  >
-                    Validity (minutes)
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-500">
-                      <FaClock />
-                    </span>
-                    <input
-                      type="number"
-                      id="validityMinutes"
-                      name="validityMinutes"
-                      value={formData.validityMinutes}
-                      onChange={handleChange}
-                      min="1"
-                      max="60"
-                      className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
-                    />
-                  </div>
-                  <small className="text-xs text-gray-500">
-                    QR code will expire after this time
-                  </small>
-                </div>
+            <div className="mb-3">
+              <label className="block text-xs text-gray-400 mb-1">
+                Semester
+              </label>
+              <select
+                id="semester"
+                name="semester"
+                className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+                value={formData.semester}
+                onChange={handleChange}
+                disabled={!finalCourse}
+              >
+                <option value="">
+                  {finalCourse ? 'Select Semester' : 'Select course first'}
+                </option>
+                {qrSemesters.map((sem) => (
+                  <option key={sem} value={sem}>
+                    {sem}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-                <button
-                  type="submit"
-                  className="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-900 py-2 rounded-lg font-semibold text-sm transition disabled:opacity-60 disabled:cursor-not-allowed"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-2" />
-                      Generating QR Code...
-                    </>
-                  ) : (
-                    <>
-                      <FaQrcode className="me-2" />
-                      Generate QR Code
-                    </>
-                  )}
-                </button>
-              </form>
+            <div className="mb-3">
+              <label className="block text-xs text-gray-400 mb-1">
+                Subject
+              </label>
+              <select
+                id="subject"
+                name="subject"
+                className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+                value={formData.subject}
+                onChange={handleChange}
+                disabled={
+                  !formData.semester || availableSubjects.length === 0
+                }
+              >
+                <option value="">
+                  {!formData.semester
+                    ? 'Select semester first'
+                    : availableSubjects.length === 0
+                    ? 'No subjects available'
+                    : 'Select subject'}
+                </option>
+                {availableSubjects.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mb-4">
+              <label
+                htmlFor="validityMinutes"
+                className="block text-xs text-gray-400 mb-1"
+              >
+                Validity (minutes)
+              </label>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500">
+                  <FaClock />
+                </span>
+                <input
+                  type="number"
+                  id="validityMinutes"
+                  name="validityMinutes"
+                  value={formData.validityMinutes}
+                  onChange={handleChange}
+                  min="1"
+                  max="60"
+                  className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+                />
+              </div>
+              <small className="text-xs text-gray-500">
+                QR code will expire after this time
+              </small>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-900 py-2 rounded-lg font-semibold text-sm transition disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-2" />
+                  Generating QR Code...
+                </>
+              ) : (
+                <>
+                  <FaQrcode className="me-2" />
+                  Generate QR Code
+                </>
+              )}
+            </button>
           </form>
         </div>
 
