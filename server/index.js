@@ -83,7 +83,9 @@ const allowedOrigins = new Set(
     'http://localhost:3000',
     process.env.FRONTEND_URL,
     // keep any known deployed origins you use
-    'https://qr-based-attendance-system-1-vi94.onrender.com'
+    'https://qr-based-attendance-system-1-vi94.onrender.com',
+    'https://qr-based-attendance-system-sfdt.onrender.com',
+    'https://qr-based-attendance-phi.vercel.app'
   ].filter(Boolean)
 );
 
