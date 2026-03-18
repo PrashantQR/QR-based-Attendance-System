@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaBell } from 'react-icons/fa';
+import { FaBell, FaBars } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
 import { Settings, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const TopNavbar = () => {
+const TopNavbar = ({ onToggleSidebar }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -35,6 +35,15 @@ const TopNavbar = () => {
   return (
     <header className="sticky top-0 z-20 bg-secondary/80 backdrop-blur-xl border-b border-white/5">
       <div className="flex items-center justify-between px-4 py-3 md:px-8 md:py-4">
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className="md:hidden inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary/70 text-gray-200 border border-white/10 shadow-soft-glass mr-3"
+          aria-label="Open sidebar"
+        >
+          <FaBars />
+        </button>
+
         <motion.div
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}

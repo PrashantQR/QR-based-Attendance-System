@@ -69,7 +69,7 @@ const MyAttendance = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-3xl mx-auto px-4 py-6 space-y-6">
       <div className="flex flex-col gap-2">
         <h2 className="text-2xl md:text-3xl font-semibold text-white">My Attendance</h2>
         <p className="text-sm text-gray-400">View your attendance history</p>
@@ -185,7 +185,7 @@ const MyAttendance = () => {
             </table>
           </div>
         ) : (
-          <div className="text-center text-gray-400 py-10">
+          <div className="text-center mt-10 text-gray-400 py-10">
             <FaCalendarAlt size={42} className="mx-auto mb-3 opacity-70" />
             <p className="text-sm">No attendance records found for the selected range</p>
           </div>

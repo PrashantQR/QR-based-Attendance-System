@@ -1,9 +1,9 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { FaQrcode, FaHistory, FaUser, FaTachometerAlt } from 'react-icons/fa';
+import { FaQrcode, FaHistory, FaUser, FaTachometerAlt, FaClipboardList } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen = false, onClose }) => {
   const { user } = useAuth();
 
   // Student sidebar keeps full navigation
@@ -14,15 +14,29 @@ const Sidebar = () => {
     { to: '/profile', label: 'Profile', icon: FaUser }
   ];
 
-  // Teacher sidebar is minimal – only Dashboard
+  // Teacher sidebar
   const teacherMenu = [
-    { to: '/teacher', label: 'Dashboard', icon: FaTachometerAlt }
+    { to: '/teacher', label: 'Dashboard', icon: FaTachometerAlt },
+    { to: '/teacher/qr-generate', label: 'Generate QR', icon: FaQrcode },
+    { to: '/teacher/attendance', label: 'View Attendance', icon: FaClipboardList },
+    { to: '/profile', label: 'Profile', icon: FaUser }
   ];
 
   const menuItems = user?.role === 'teacher' ? teacherMenu : studentMenu;
 
   return (
-    <aside className="hidden md:flex md:flex-col bg-secondary/90 backdrop-blur-xl border-r border-white/5 shadow-soft-glass w-64 min-h-screen sticky top-0">
+    <aside
+      className={[
+        'bg-secondary/90 backdrop-blur-xl border-r border-white/5 shadow-soft-glass w-64 min-h-screen',
+        // Desktop pinned sidebar
+        'hidden md:flex md:flex-col md:sticky md:top-0',
+        // Mobile slide-in drawer
+        'fixed top-0 left-0 z-50 md:z-auto md:static',
+        'transform transition-transform duration-300',
+        isOpen ? 'translate-x-0' : '-translate-x-full',
+        'md:translate-x-0'
+      ].join(' ')}
+    >
       <div className="px-6 py-5 border-b border-white/10">
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 rounded-2xl bg-accent/20 flex items-center justify-center text-accent">
@@ -40,6 +54,7 @@ const Sidebar = () => {
           <NavLink
             key={to}
             to={to}
+            onClick={() => onClose?.()}
             className={({ isActive }) =>
               [
                 'flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200',

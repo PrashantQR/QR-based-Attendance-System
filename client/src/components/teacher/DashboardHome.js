@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { FaQrcode, FaUsers } from 'react-icons/fa';
 
 const DashboardHome = () => {
   const { isAuthenticated, loading: authLoading, user, logout } = useAuth();
@@ -139,53 +138,32 @@ const DashboardHome = () => {
         <SummaryCard title="Attendance %" value={`${attendanceRate}%`} />
       </div>
 
-      {/* Subject summary + quick actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Subject Summary */}
-        <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
-          <h2 className="text-lg font-semibold text-white mb-4">
-            Subject Summary
-          </h2>
-          {subjectCards.length === 0 ? (
-            <p className="text-sm text-gray-400">No data available</p>
-          ) : (
-            subjectCards.map((sub) => (
-              <div key={sub.name} className="mb-3">
-                <p className="text-sm text-slate-200">{sub.name}</p>
-                <div className="w-full bg-slate-800 h-2 rounded mt-1 overflow-hidden">
+      {/* Subject summary */}
+      <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
+        <h2 className="text-lg font-semibold text-white mb-4">
+          Subject Summary
+        </h2>
+        {subjectCards.length === 0 ? (
+          <p className="text-sm text-gray-400">No data available</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {subjectCards.map((sub) => (
+              <div key={sub.name} className="bg-slate-950/40 border border-slate-800 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-semibold text-slate-200">{sub.name}</p>
+                  <span className="text-xs text-emerald-300 font-semibold">{sub.percentage}%</span>
+                </div>
+                <div className="w-full bg-slate-800 h-2 rounded overflow-hidden">
                   <div
                     className="bg-emerald-500 h-2 rounded"
                     style={{ width: `${sub.percentage}%` }}
                   />
                 </div>
-                <p className="text-xs text-gray-400 mt-1">
-                  {sub.percentage}% present
-                </p>
+                <p className="text-xs text-gray-400 mt-2">{sub.percentage}% present</p>
               </div>
-            ))
-          )}
-        </div>
-
-        {/* Quick Actions */}
-        <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
-          <h2 className="text-lg font-semibold text-white mb-4">
-            Quick Actions
-          </h2>
-          <div className="grid grid-cols-1 gap-3">
-            <ActionCard
-              title="Generate QR"
-              desc="Create attendance QR for your class"
-              onClick={() => navigate('/teacher/qr-generate')}
-              icon={<FaQrcode className="text-emerald-400" />}
-            />
-            <ActionCard
-              title="View Attendance"
-              desc="Open attendance view and analytics"
-              onClick={() => navigate('/teacher/attendance')}
-              icon={<FaUsers className="text-sky-400" />}
-            />
+            ))}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Recent Activity */}
@@ -217,20 +195,6 @@ const SummaryCard = ({ title, value }) => (
     <p className="text-gray-400 text-xs md:text-sm">{title}</p>
     <h2 className="text-2xl font-bold mt-2 text-white">{value}</h2>
   </div>
-);
-
-const ActionCard = ({ title, desc, icon, onClick }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className="w-full text-left bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg p-3 flex items-start gap-3 transition-colors"
-  >
-    <div className="mt-1">{icon}</div>
-    <div>
-      <h3 className="font-medium text-slate-100">{title}</h3>
-      <p className="text-xs text-gray-400 mt-1">{desc}</p>
-    </div>
-  </button>
 );
 
 export default DashboardHome;
