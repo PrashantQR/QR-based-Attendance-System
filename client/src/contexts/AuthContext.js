@@ -168,8 +168,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (userData) => {
-    dispatch({ type: 'LOGIN_START' });
-    
     try {
       const response = await api.post('/auth/register', userData);
       
