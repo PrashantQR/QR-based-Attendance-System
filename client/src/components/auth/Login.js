@@ -11,6 +11,7 @@ const Login = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -24,18 +25,37 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+
+    // Mobile-friendly validation (prevents silent failures)
+    if (!formData.email || !formData.password) {
+      setError('Please enter email and password');
+      return;
+    }
+
     setLoading(true);
 
     try {
       const result = await login(formData.email, formData.password);
-      if (result.success) {
-        console.log('Login successful, navigating to root...');
-        console.log('User data:', result.user);
-        // Let App route based on role from the root path
+      if (result?.success) {
         navigate('/');
+        return;
       }
-    } catch (error) {
-      console.error('Login error:', error);
+
+      // AuthContext returns { success: false, error: message }
+      setError(result?.error || 'Login failed. Please try again.');
+    } catch (err) {
+      console.error('Login error:', err);
+      // Network fallback for slow/blocked mobile connections
+      if (err?.code === 'ECONNABORTED') {
+        setError('Slow internet. Please try again.');
+      } else if (err?.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err?.request) {
+        setError('Server not responding. Check your internet connection.');
+      } else {
+        setError(err?.message || 'Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -53,6 +73,12 @@ const Login = () => {
           <h2 className="text-2xl md:text-3xl font-semibold text-white mb-1">Welcome back</h2>
           <p className="text-sm text-gray-400">Sign in to your account</p>
         </div>
+
+        {error && (
+          <div className="bg-red-500/20 text-red-400 p-2 rounded mb-3 text-sm" role="alert">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
@@ -109,7 +135,7 @@ const Login = () => {
             disabled={loading}
             className="w-full inline-flex items-center justify-center rounded-full bg-accent text-sm font-semibold text-secondary py-2.5 mt-2 hover:bg-emerald-400 transition shadow-soft-glass disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {loading ? 'Signing In...' : 'Sign In'}
+            {loading ? 'Logging in...' : 'Login'}
           </button>
 
           <div className="text-center text-xs text-gray-400 mt-3 space-y-1">

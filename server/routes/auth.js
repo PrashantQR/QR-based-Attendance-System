@@ -148,9 +148,9 @@ router.post('/login', async (req, res) => {
     const user = await User.findOne({ email }).select('+password');
     
     if (!user) {
-      return res.status(401).json({
-        error: 'Invalid credentials',
-        message: 'Email or password is incorrect'
+      return res.status(400).json({
+        error: 'User not found',
+        message: 'User not found'
       });
     }
 
@@ -165,9 +165,9 @@ router.post('/login', async (req, res) => {
     // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(401).json({
-        error: 'Invalid credentials',
-        message: 'Email or password is incorrect'
+      return res.status(400).json({
+        error: 'Invalid password',
+        message: 'Invalid password'
       });
     }
 
