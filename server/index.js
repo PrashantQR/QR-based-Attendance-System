@@ -94,6 +94,15 @@ const corsOptions = {
     // allow non-browser clients (curl, Render health checks, server-to-server)
     if (!origin) return cb(null, true);
     if (allowedOrigins.has(origin)) return cb(null, true);
+
+    // In case Render generates a new subdomain after redeploy,
+    // allow any onrender.com / vercel.app origin. This prevents
+    // mobile-only login failures caused by strict CORS.
+    try {
+      if (origin.endsWith('.onrender.com')) return cb(null, true);
+      if (origin.endsWith('.vercel.app')) return cb(null, true);
+    } catch (_) {}
+
     console.log('[cors] blocked origin', origin);
     return cb(null, false);
   },
