@@ -41,10 +41,12 @@ const Sidebar = ({ isOpen = false, onClose }) => {
     >
       <div className="px-6 py-5 border-b border-white/10">
         <div className="flex items-center gap-2">
-          <div className="h-9 w-9 rounded-2xl bg-accent/20 flex items-center justify-center text-accent">
+          <div
+            className="h-9 w-9 rounded-2xl bg-accent/20 flex items-center justify-center text-accent transition-transform duration-300 hover:scale-110 shadow-lg shadow-green-500/20 animate-[float_3s_ease-in-out_infinite]"
+          >
             <FaQrcode />
           </div>
-          <div>
+          <div className="opacity-0 animate-fadeIn">
             <p className="text-xs tracking-widest text-gray-400 uppercase">QR</p>
             <p className="font-semibold text-gray-100">Attendance</p>
           </div>
