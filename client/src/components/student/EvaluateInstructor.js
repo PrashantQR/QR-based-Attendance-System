@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import api from '../../utils/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ratingLabels = {
   1: 'Bad',
@@ -9,24 +10,21 @@ const ratingLabels = {
   5: 'Excellent'
 };
 
-const courseOptions = [
-  'MERN Stack',
-  'Data Structures',
-  'Database Management',
-  'Operating Systems',
-  'Computer Networks',
-  'Software Engineering'
-];
-
-const EvaluateInstructor = () => {
+const EvaluateInstructor = ({ embedded = false, onClose } = {}) => {
+  const { user } = useAuth();
   const [instructors, setInstructors] = useState([]);
+  const enrolledSubjects = useMemo(() => {
+    return Array.isArray(user?.subjects) ? user.subjects : [];
+  }, [user?.subjects]);
+
   const [form, setForm] = useState({
     instructorId: '',
-    course: '',
-    teachingQuality: 5,
-    communication: 5,
-    interaction: 5,
-    subjectKnowledge: 5,
+    subject: '',
+    teachingQuality: 0,
+    communication: 0,
+    interaction: 0,
+    subjectKnowledge: 0,
+    doubtSolving: 0,
     comment: ''
   });
   const [submitting, setSubmitting] = useState(false);
@@ -73,26 +71,62 @@ const EvaluateInstructor = () => {
     setMessage('');
     setError('');
 
-    if (!form.instructorId || !form.course) {
-      setError('Please select both instructor and course before submitting evaluation.');
+    if (!form.instructorId || !form.subject) {
+      setError('Please select both instructor and subject before submitting evaluation.');
+      setSubmitting(false);
+      return;
+    }
+
+    // Validate all required ratings (1-5)
+    const requiredRatings = [
+      ['teachingQuality', form.teachingQuality],
+      ['communication', form.communication],
+      ['interaction', form.interaction],
+      ['subjectKnowledge', form.subjectKnowledge],
+      ['doubtSolving', form.doubtSolving]
+    ];
+    const invalid = requiredRatings.find(([, v]) => !Number.isInteger(v) || v < 1 || v > 5);
+    if (invalid) {
+      setError('Please select ratings for all categories (1–5).');
       setSubmitting(false);
       return;
     }
 
     try {
       const token = localStorage.getItem('token');
-      await api.post('/evaluation/submit', form, {
+
+      // Anonymous feedback: do not send student identity
+      const payload = {
+        teacherId: form.instructorId,
+        subject: form.subject,
+        ratings: {
+          teachingQuality: form.teachingQuality,
+          communication: form.communication,
+          interaction: form.interaction,
+          knowledge: form.subjectKnowledge,
+          doubtSolving: form.doubtSolving
+        },
+        comment: form.comment
+      };
+
+      await api.post('/evaluation/submit', payload, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
 
       setMessage('Evaluation submitted successfully.');
-      setForm((prev) => ({
-        ...prev,
-        course: '',
+      setForm({
+        instructorId: '',
+        subject: '',
+        teachingQuality: 0,
+        communication: 0,
+        interaction: 0,
+        subjectKnowledge: 0,
+        doubtSolving: 0,
         comment: ''
-      }));
+      });
+      onClose?.();
     } catch (err) {
       console.error('Error submitting evaluation:', err);
       setError(
@@ -108,7 +142,7 @@ const EvaluateInstructor = () => {
       <div className="flex items-center justify-between">
         <label className="text-sm font-semibold text-gray-200">{label}</label>
         <span className="text-sm text-gray-400">
-          {form[name]} – {ratingLabels[form[name]]}
+          {form[name] ? `${form[name]} – ${ratingLabels[form[name]]}` : 'Select 1–5'}
         </span>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -131,14 +165,11 @@ const EvaluateInstructor = () => {
           );
         })}
       </div>
-      <p className="text-sm text-gray-400">
-        1–5: {Object.entries(ratingLabels).map(([k, v]) => `${k}=${v}`).join(', ')}
-      </p>
     </div>
   );
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-4 py-6">
+    <div className={embedded ? '' : 'w-full max-w-3xl mx-auto px-4 py-6'}>
       <div className="mb-6">
         <h2 className="text-2xl md:text-3xl font-semibold text-white">Instructor Evaluation</h2>
         <p className="text-sm text-gray-400 mt-1">
@@ -182,21 +213,24 @@ const EvaluateInstructor = () => {
             </div>
 
             <div>
-              <label htmlFor="course" className="block text-sm font-semibold text-gray-200 mb-1">
-                Course
+              <label htmlFor="subject" className="block text-sm font-semibold text-gray-200 mb-1">
+                Subject
               </label>
               <select
-                id="course"
-                name="course"
+                id="subject"
+                name="subject"
                 className="w-full rounded-xl bg-primary/70 border border-white/10 px-3 py-2.5 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent/70 focus:border-accent/70"
-                value={form.course}
+                value={form.subject}
                 onChange={handleChange}
-                required
+                required={enrolledSubjects.length > 0}
+                disabled={enrolledSubjects.length === 0}
               >
-                <option value="">Select Course</option>
-                {courseOptions.map((course) => (
-                  <option key={course} value={course}>
-                    {course}
+                <option value="">
+                  {enrolledSubjects.length === 0 ? 'No subjects assigned' : 'Select Subject'}
+                </option>
+                {enrolledSubjects.map((subj) => (
+                  <option key={subj} value={subj}>
+                    {subj}
                   </option>
                 ))}
               </select>
@@ -207,6 +241,7 @@ const EvaluateInstructor = () => {
           {renderRatingControl('communication', 'Communication')}
           {renderRatingControl('interaction', 'Class Interaction')}
           {renderRatingControl('subjectKnowledge', 'Subject Knowledge')}
+          {renderRatingControl('doubtSolving', 'Doubt Solving Ability')}
 
           <div className="flex flex-col gap-2">
             <label htmlFor="comment" className="text-sm font-semibold text-gray-200">

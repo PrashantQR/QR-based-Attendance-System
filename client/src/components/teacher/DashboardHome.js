@@ -254,7 +254,7 @@ const DashboardHome = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-gray-200">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm text-gray-200">
                   <div>
                     <div className="text-xs text-gray-400">Teaching</div>
                     <div className="font-semibold">{f.ratings?.teachingQuality ?? '—'}</div>
@@ -270,6 +270,10 @@ const DashboardHome = () => {
                   <div>
                     <div className="text-xs text-gray-400">Knowledge</div>
                     <div className="font-semibold">{f.ratings?.subjectKnowledge ?? '—'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-400">Doubt Solving</div>
+                    <div className="font-semibold">{f.ratings?.doubtSolving ?? '—'}</div>
                   </div>
                 </div>
 

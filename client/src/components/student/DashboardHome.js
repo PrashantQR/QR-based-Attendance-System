@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
 import { motion } from 'framer-motion';
+import EvaluateInstructor from './EvaluateInstructor';
 
 const DashboardHome = () => {
   const { user } = useAuth();
+  const [showEvaluation, setShowEvaluation] = useState(false);
   const [stats, setStats] = useState({
     totalAttendance: 0,
     presentDays: 0,
@@ -162,11 +164,20 @@ const DashboardHome = () => {
         transition={{ duration: 0.35, delay: 0.1 }}
         className="bg-secondary/80 border border-white/5 rounded-2.5xl p-5 md:p-6 shadow-soft-glass backdrop-blur-xl"
       >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-gray-300">Enrolled Subjects</h3>
-          <span className="text-[11px] text-gray-400">
-            {enrolledSubjects.length} selected
-          </span>
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-300">Enrolled Subjects</h3>
+            <span className="text-[11px] text-gray-400">
+              {enrolledSubjects.length} selected
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowEvaluation(true)}
+            className="bg-gradient-to-r from-green-500 to-emerald-600 px-4 py-2 rounded-lg text-white hover:scale-105 transition"
+          >
+            Instructor Evaluation
+          </button>
         </div>
 
         {enrolledSubjects.length > 0 ? (
@@ -184,6 +195,21 @@ const DashboardHome = () => {
           <p className="text-xs text-gray-400">No subjects assigned yet.</p>
         )}
       </motion.section>
+
+      {showEvaluation && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+          <div className="bg-[#0f172a] p-6 rounded-xl w-full max-w-lg text-white">
+            <button
+              type="button"
+              onClick={() => setShowEvaluation(false)}
+              className="mb-4 text-red-400"
+            >
+              Close
+            </button>
+            <EvaluateInstructor embedded onClose={() => setShowEvaluation(false)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -6,11 +6,12 @@ const router = express.Router();
 
 const calcAverage = (e) => {
   const sum =
-    Number(e.teachingQuality) +
-    Number(e.communication) +
-    Number(e.interaction) +
-    Number(e.subjectKnowledge);
-  return Number((sum / 4).toFixed(2));
+    Number(e.teachingQuality || 0) +
+    Number(e.communication || 0) +
+    Number(e.interaction || 0) +
+    Number(e.subjectKnowledge || 0) +
+    Number(e.doubtSolving || 0);
+  return Number((sum / 5).toFixed(2));
 };
 
 // @desc    Get anonymous feedback for an instructor (teacher-only)
@@ -28,7 +29,7 @@ router.get('/:instructorId', protect, authorize('teacher'), async (req, res) => 
     }
 
     const evaluations = await Evaluation.find({ instructorId })
-      .select('course teachingQuality communication interaction subjectKnowledge comment createdAt')
+      .select('course teachingQuality communication interaction subjectKnowledge doubtSolving comment createdAt')
       .sort({ createdAt: -1 });
 
     const feedbacks = evaluations.map((e) => ({
@@ -36,7 +37,8 @@ router.get('/:instructorId', protect, authorize('teacher'), async (req, res) => 
         teachingQuality: e.teachingQuality,
         communication: e.communication,
         classInteraction: e.interaction,
-        subjectKnowledge: e.subjectKnowledge
+        subjectKnowledge: e.subjectKnowledge,
+        doubtSolving: e.doubtSolving
       },
       course: e.course,
       comment: e.comment || '',

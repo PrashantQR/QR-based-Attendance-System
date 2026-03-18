@@ -13,30 +13,45 @@ const isValidRating = (value) => Number.isInteger(value) && value >= 1 && value 
 router.post('/submit', protect, authorize('student'), async (req, res) => {
   try {
     const {
-      instructorId,
-      course,
-      teachingQuality,
-      communication,
-      interaction,
-      subjectKnowledge,
+      instructorId: instructorIdBody,
+      teacherId: teacherIdBody,
+      course: courseBody,
+      subject: subjectBody,
+      teachingQuality: teachingQualityBody,
+      communication: communicationBody,
+      interaction: interactionBody,
+      subjectKnowledge: subjectKnowledgeBody,
+      doubtSolving: doubtSolvingBody,
+      ratings,
       comment
     } = req.body;
 
-    if (!instructorId || !course) {
+    const instructorId = instructorIdBody || teacherIdBody;
+    const course = (courseBody || subjectBody) ?? '';
+
+    const teachingQuality = ratings?.teachingQuality ?? teachingQualityBody;
+    const communication = ratings?.communication ?? communicationBody;
+    const interaction = ratings?.interaction ?? interactionBody;
+    const subjectKnowledge =
+      ratings?.knowledge ?? ratings?.subjectKnowledge ?? subjectKnowledgeBody;
+    const doubtSolving = ratings?.doubtSolving ?? doubtSolvingBody;
+
+    if (!instructorId || !course || !String(course).trim()) {
       return res.status(400).json({
         error: 'Validation error',
-        message: 'Instructor and course are required'
+        message: 'Instructor and subject are required'
       });
     }
 
-    const ratings = {
+    const submittedRatings = {
       teachingQuality: Number(teachingQuality),
       communication: Number(communication),
       interaction: Number(interaction),
-      subjectKnowledge: Number(subjectKnowledge)
+      subjectKnowledge: Number(subjectKnowledge),
+      doubtSolving: Number(doubtSolving)
     };
 
-    for (const [key, value] of Object.entries(ratings)) {
+    for (const [key, value] of Object.entries(submittedRatings)) {
       if (!isValidRating(value)) {
         return res.status(400).json({
           error: 'Validation error',
@@ -49,7 +64,7 @@ router.post('/submit', protect, authorize('student'), async (req, res) => {
     const existing = await Evaluation.findOne({
       instructorId,
       studentId: req.user._id,
-      course: course.trim()
+      course: String(course).trim()
     }).select('_id');
 
     if (existing) {
@@ -62,8 +77,8 @@ router.post('/submit', protect, authorize('student'), async (req, res) => {
     await Evaluation.create({
       instructorId,
       studentId: req.user._id,
-      course: course.trim(),
-      ...ratings,
+      course: String(course).trim(),
+      ...submittedRatings,
       comment
     });
 
@@ -96,7 +111,7 @@ router.get('/instructor/:id', protect, authorize('teacher'), async (req, res) =>
     }
 
     const evaluations = await Evaluation.find({ instructorId }).select(
-      'course teachingQuality communication interaction subjectKnowledge comment createdAt'
+      'course teachingQuality communication interaction subjectKnowledge doubtSolving comment createdAt'
     );
 
     if (!evaluations.length) {
@@ -108,13 +123,15 @@ router.get('/instructor/:id', protect, authorize('teacher'), async (req, res) =>
             teachingQuality: 0,
             communication: 0,
             interaction: 0,
-            subjectKnowledge: 0
+              subjectKnowledge: 0,
+              doubtSolving: 0
           },
           breakdown: {
             teachingQuality: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
             communication: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
             interaction: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
-            subjectKnowledge: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+            subjectKnowledge: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+            doubtSolving: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
           },
           comments: []
         }
@@ -125,30 +142,44 @@ router.get('/instructor/:id', protect, authorize('teacher'), async (req, res) =>
       teachingQuality: 0,
       communication: 0,
       interaction: 0,
-      subjectKnowledge: 0
+      subjectKnowledge: 0,
+      doubtSolving: 0
     };
 
     const breakdown = {
       teachingQuality: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
       communication: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
       interaction: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
-      subjectKnowledge: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+      subjectKnowledge: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+      doubtSolving: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
     };
 
     const comments = [];
 
     evaluations.forEach((evalDoc) => {
-      const { teachingQuality, communication, interaction, subjectKnowledge, comment } = evalDoc;
+      const { teachingQuality, communication, interaction, subjectKnowledge, doubtSolving, comment } = evalDoc;
 
-      totals.teachingQuality += teachingQuality;
-      totals.communication += communication;
-      totals.interaction += interaction;
-      totals.subjectKnowledge += subjectKnowledge;
+      totals.teachingQuality += Number(teachingQuality || 0);
+      totals.communication += Number(communication || 0);
+      totals.interaction += Number(interaction || 0);
+      totals.subjectKnowledge += Number(subjectKnowledge || 0);
+      totals.doubtSolving += Number(doubtSolving || 0);
 
-      breakdown.teachingQuality[teachingQuality]++;
-      breakdown.communication[communication]++;
-      breakdown.interaction[interaction]++;
-      breakdown.subjectKnowledge[subjectKnowledge]++;
+      if (doubtSolving >= 1 && doubtSolving <= 5) {
+        breakdown.doubtSolving[doubtSolving]++;
+      }
+      if (teachingQuality >= 1 && teachingQuality <= 5) {
+        breakdown.teachingQuality[teachingQuality]++;
+      }
+      if (communication >= 1 && communication <= 5) {
+        breakdown.communication[communication]++;
+      }
+      if (interaction >= 1 && interaction <= 5) {
+        breakdown.interaction[interaction]++;
+      }
+      if (subjectKnowledge >= 1 && subjectKnowledge <= 5) {
+        breakdown.subjectKnowledge[subjectKnowledge]++;
+      }
 
       if (comment && comment.trim()) {
         comments.push({
@@ -165,7 +196,8 @@ router.get('/instructor/:id', protect, authorize('teacher'), async (req, res) =>
       teachingQuality: Number((totals.teachingQuality / count).toFixed(2)),
       communication: Number((totals.communication / count).toFixed(2)),
       interaction: Number((totals.interaction / count).toFixed(2)),
-      subjectKnowledge: Number((totals.subjectKnowledge / count).toFixed(2))
+      subjectKnowledge: Number((totals.subjectKnowledge / count).toFixed(2)),
+      doubtSolving: Number((totals.doubtSolving / count).toFixed(2))
     };
 
     return res.json({
