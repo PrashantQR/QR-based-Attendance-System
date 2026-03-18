@@ -13,6 +13,9 @@ const DashboardHome = () => {
     recentActivity: []
   });
   const [loading, setLoading] = useState(true);
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [overallRating, setOverallRating] = useState(0);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
 
   const fetchDashboardStats = useCallback(async () => {
     try {
@@ -45,11 +48,32 @@ const DashboardHome = () => {
     }
   }, [logout, navigate]);
 
+  const fetchFeedback = useCallback(async () => {
+    if (!user?._id) return;
+    setFeedbackLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await api.get(`/feedback/${user._id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      const data = res.data?.data;
+      setOverallRating(Number(data?.overallAverage || 0));
+      setFeedbacks(Array.isArray(data?.feedbacks) ? data.feedbacks : []);
+    } catch (error) {
+      console.error('Error fetching feedback:', error);
+      setOverallRating(0);
+      setFeedbacks([]);
+    } finally {
+      setFeedbackLoading(false);
+    }
+  }, [user?._id]);
+
   useEffect(() => {
     if (!authLoading && isAuthenticated && user?.role === 'teacher') {
       fetchDashboardStats();
+      fetchFeedback();
     }
-  }, [authLoading, isAuthenticated, user, fetchDashboardStats]);
+  }, [authLoading, isAuthenticated, user, fetchDashboardStats, fetchFeedback]);
 
   const attendanceRate = useMemo(() => {
     if (!stats.totalStudents) return 0;
@@ -101,6 +125,7 @@ const DashboardHome = () => {
   const totalStudents = stats.totalStudents;
   const todayCount = stats.todayAttendance;
   const activeQR = stats.activeQRCodes;
+  const latestFeedbacks = feedbacks.slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -181,6 +206,79 @@ const DashboardHome = () => {
                 className="py-2 text-sm text-slate-200 flex items-center justify-between"
               >
                 <span className="truncate">{a.text}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Student Feedback */}
+      <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-white">Student Feedback</h2>
+          {feedbackLoading && (
+            <span className="text-xs text-gray-400">Loading…</span>
+          )}
+        </div>
+
+        <div className="bg-white/5 rounded-xl p-4 mb-4 border border-white/10">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-300">Overall Rating</div>
+            <div className="text-sm text-gray-300">{feedbacks.length} feedback</div>
+          </div>
+          <div className="mt-2 flex items-end justify-between">
+            <div className="text-3xl font-semibold text-white">
+              ⭐ {overallRating.toFixed(1)} <span className="text-gray-400 text-base">/ 5</span>
+            </div>
+            <div className="text-xs text-gray-400">
+              Anonymous · latest first
+            </div>
+          </div>
+        </div>
+
+        {latestFeedbacks.length === 0 ? (
+          <div className="text-sm text-gray-400">
+            No feedback yet.
+          </div>
+        ) : (
+          <div>
+            {latestFeedbacks.map((f, idx) => (
+              <div key={`${f.createdAt}-${idx}`} className="bg-white/5 rounded-xl p-4 mb-4 border border-white/10">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-sm font-semibold text-gray-100">
+                    ⭐ {Number(f.averageRating || 0).toFixed(1)}
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    {f.course ? `${f.course} • ` : ''}
+                    {f.createdAt ? new Date(f.createdAt).toLocaleString() : ''}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-gray-200">
+                  <div>
+                    <div className="text-xs text-gray-400">Teaching</div>
+                    <div className="font-semibold">{f.ratings?.teachingQuality ?? '—'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-400">Communication</div>
+                    <div className="font-semibold">{f.ratings?.communication ?? '—'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-400">Interaction</div>
+                    <div className="font-semibold">{f.ratings?.classInteraction ?? '—'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-400">Knowledge</div>
+                    <div className="font-semibold">{f.ratings?.subjectKnowledge ?? '—'}</div>
+                  </div>
+                </div>
+
+                {f.comment && String(f.comment).trim() && (
+                  <div className="mt-3 text-sm text-gray-100">
+                    <div className="text-xs text-gray-400 mb-1">Comment</div>
+                    <div className="italic">“{String(f.comment).trim()}”</div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
