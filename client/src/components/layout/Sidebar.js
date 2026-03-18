@@ -28,8 +28,10 @@ const Sidebar = ({ isOpen = false, onClose }) => {
     <aside
       className={[
         'bg-secondary/90 backdrop-blur-xl border-r border-white/5 shadow-soft-glass w-64 min-h-screen',
+        // Layout
+        'flex flex-col',
         // Desktop pinned sidebar
-        'hidden md:flex md:flex-col md:sticky md:top-0',
+        'md:sticky md:top-0',
         // Mobile slide-in drawer
         'fixed top-0 left-0 z-50 md:z-auto md:static',
         'transform transition-transform duration-300',
