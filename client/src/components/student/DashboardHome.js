@@ -198,7 +198,7 @@ const DashboardHome = () => {
 
       {showEvaluation && (
         <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
-          <div className="bg-[#0f172a] p-6 rounded-xl w-full max-w-lg text-white">
+          <div className="bg-[#0f172a] p-6 rounded-xl w-full max-w-md text-white max-h-[90vh] overflow-y-auto shadow-lg">
             <button
               type="button"
               onClick={() => setShowEvaluation(false)}

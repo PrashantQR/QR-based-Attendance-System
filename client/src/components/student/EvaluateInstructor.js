@@ -258,13 +258,22 @@ const EvaluateInstructor = ({ embedded = false, onClose } = {}) => {
             />
           </div>
 
-          <button
-            type="submit"
-            className="w-full mt-4 inline-flex items-center justify-center rounded-xl bg-accent text-secondary px-4 py-3 text-sm font-semibold hover:bg-emerald-400 disabled:opacity-60"
-            disabled={submitting}
+          {/* Sticky submit (helps inside the modal scroll container) */}
+          <div
+            className={
+              embedded
+                ? 'sticky bottom-0 bg-[#0f172a] pt-4 mt-2'
+                : ''
+            }
           >
-            {submitting ? 'Submitting...' : 'Submit Evaluation'}
-          </button>
+            <button
+              type="submit"
+              className="w-full mt-6 bg-gradient-to-r from-green-500 to-emerald-600 py-2 rounded-lg font-semibold hover:scale-105 transition disabled:opacity-60"
+              disabled={submitting}
+            >
+              Submit Evaluation
+            </button>
+          </div>
         </form>
       </div>
     </div>
