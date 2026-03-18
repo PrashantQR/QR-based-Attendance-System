@@ -157,7 +157,31 @@ export const AuthProvider = ({ children }) => {
       return { success: true, user: userData };
     } catch (error) {
       console.error('AuthContext - Login failed:', error);
-      const message = error.response?.data?.message || 'Login failed';
+      let message = 'Login failed. Please try again.';
+
+      if (error?.response) {
+        const status = error.response.status;
+        const data = error.response.data;
+
+        if (data && typeof data === 'object') {
+          message = data.message || data.error || message;
+        } else if (typeof data === 'string' && data.trim()) {
+          message = data;
+        }
+
+        if (status === 404) {
+          message = 'Login API not found on this page. Please use the correct app URL.';
+        } else if (status >= 500) {
+          message = data?.message || 'Server error during login. Please try again.';
+        }
+      } else if (error?.code === 'ECONNABORTED') {
+        message = 'Slow internet. Please try again.';
+      } else if (error?.request) {
+        message = 'Server not responding. Check your internet connection.';
+      } else {
+        message = error?.message || message;
+      }
+
       dispatch({
         type: 'LOGIN_FAILURE',
         payload: message
