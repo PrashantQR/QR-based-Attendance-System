@@ -1,10 +1,9 @@
 import axios from 'axios';
 
-// Use different base URLs for dev vs production
-const baseURL =
-  process.env.NODE_ENV === 'development'
-    ? 'http://localhost:5000/api'
-    : `${process.env.REACT_APP_API_URL || ''}/api`;
+// Single-service deployment:
+// - Production: same origin `/api`
+// - Development: CRA proxy forwards `/api` to backend (see client/package.json "proxy")
+const baseURL = '/api';
 
 const api = axios.create({
   baseURL,

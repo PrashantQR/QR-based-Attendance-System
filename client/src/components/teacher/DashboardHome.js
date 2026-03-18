@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { FaQrcode, FaUsers, FaChartBar, FaCalendarAlt } from 'react-icons/fa';
+import { FaQrcode, FaUsers } from 'react-icons/fa';
 
 const DashboardHome = () => {
   const { isAuthenticated, loading: authLoading, user, logout } = useAuth();

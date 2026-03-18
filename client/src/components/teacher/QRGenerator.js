@@ -20,11 +20,13 @@ const defaultSemesters = ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6'];
 
 const QRGenerator = () => {
   const { user, isAuthenticated, token } = useAuth();
-  const teacherSubjects = Array.isArray(user?.subjects) ? user.subjects : [];
+  const teacherSubjects = useMemo(
+    () => (Array.isArray(user?.subjects) ? user.subjects : []),
+    [user?.subjects]
+  );
   const [formData, setFormData] = useState({
     description: '',
     location: '',
-    className: '',
     course: '',
     customCourse: '',
     semester: '',
@@ -35,8 +37,6 @@ const QRGenerator = () => {
   const [loading, setLoading] = useState(false);
   const [courses, setCourses] = useState([]);
   const [rawSubjects, setRawSubjects] = useState([]);
-  const [newCourseName, setNewCourseName] = useState('');
-  const [newSubject, setNewSubject] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -139,52 +139,6 @@ const QRGenerator = () => {
     fetchSubjects();
   }, [finalCourse, formData.semester]);
 
-  const handleCreateCourse = async (e) => {
-    e.preventDefault();
-    if (!newCourseName.trim()) {
-      toast.error('Enter a course name');
-      return;
-    }
-    try {
-      const res = await api.post('/courses', { name: newCourseName.trim() });
-      if (res.data?.success) {
-        toast.success('Course added');
-        setCourses((prev) => [...prev, res.data.data.name]);
-        setNewCourseName('');
-      }
-    } catch (error) {
-      console.error('Create course error', error);
-      const message = error.response?.data?.error || 'Failed to create course';
-      toast.error(message);
-    }
-  };
-
-  const handleCreateSubject = async (e) => {
-    e.preventDefault();
-    if (!newSubject.trim() || !formData.semester || !finalCourse) {
-      toast.error('Enter subject name, course and semester');
-      return;
-    }
-    try {
-      const res = await api.post('/subjects', {
-        name: newSubject.trim(),
-        course: finalCourse,
-        semester: formData.semester
-      });
-      if (res.data?.success) {
-        toast.success('Subject added');
-        if (finalCourse === res.data.data.course && formData.semester === res.data.data.semester) {
-          setRawSubjects((prev) => [...prev, res.data.data.name]);
-        }
-        setNewSubject('');
-      }
-    } catch (error) {
-      console.error('Create subject error', error);
-      const message = error.response?.data?.error || 'Failed to create subject';
-      toast.error(message);
-    }
-  };
-
   const generateQR = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -235,7 +189,6 @@ const QRGenerator = () => {
         location: formData.location,
         course: finalCourse,
         semester: formData.semester,
-        className: formData.className,
         subject: formData.subject,
         validityMinutes: formData.validityMinutes
       };

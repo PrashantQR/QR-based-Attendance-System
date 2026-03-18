@@ -828,19 +828,6 @@ const InputWithIcon = ({ icon, label, id, className = '', ...rest }) => (
   </div>
 );
 
-const Input = ({ label, id, className = '', ...rest }) => (
-  <div className={['space-y-1', className].join(' ')}>
-    <label htmlFor={id} className="block text-xs font-medium text-gray-300">
-      {label}
-    </label>
-    <input
-      id={id}
-      {...rest}
-      className="w-full rounded-xl bg-primary/70 border border-white/10 px-3 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent/70 focus:border-accent/70"
-    />
-  </div>
-);
-
 const PasswordInput = ({ label, id, show, setShow, ...rest }) => (
   <div className="space-y-1">
     <label htmlFor={id} className="block text-xs font-medium text-gray-300">
