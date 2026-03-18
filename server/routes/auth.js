@@ -10,6 +10,11 @@ const router = express.Router();
 
 // Generate JWT Token
 const generateToken = (id) => {
+  if (!process.env.JWT_SECRET) {
+    const err = new Error('JWT_SECRET is not set');
+    err.code = 'MISSING_JWT_SECRET';
+    throw err;
+  }
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: '30d'
   });
@@ -103,6 +108,27 @@ router.post('/register', async (req, res) => {
     }
   } catch (error) {
     console.error('Registration error:', error);
+    if (error && error.code === 'MISSING_JWT_SECRET') {
+      return res.status(500).json({
+        error: 'Server misconfiguration',
+        message: 'Authentication is not configured (JWT_SECRET missing)'
+      });
+    }
+    // Mongoose validation errors should be 400, not 500
+    if (error && (error.name === 'ValidationError' || error.code === 11000)) {
+      const message =
+        error.code === 11000
+          ? 'Duplicate field value'
+          : Object.values(error.errors || {})
+              .map((e) => e.message)
+              .filter(Boolean)
+              .join(', ') || 'Invalid user data';
+      return res.status(400).json({
+        error: 'Invalid user data',
+        message
+      });
+    }
+
     res.status(500).json({
       error: 'Server error',
       message: 'An error occurred during registration'
@@ -168,6 +194,12 @@ router.post('/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
+    if (error && error.code === 'MISSING_JWT_SECRET') {
+      return res.status(500).json({
+        error: 'Server misconfiguration',
+        message: 'Authentication is not configured (JWT_SECRET missing)'
+      });
+    }
     res.status(500).json({
       error: 'Server error',
       message: 'An error occurred during login'

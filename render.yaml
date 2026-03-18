@@ -14,4 +14,13 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
+      # Only needed if you deploy the React app separately.
+      # For single-service deployments (React served by this same service),
+      # leave this unset.
+      - key: REACT_APP_API_BASE_URL
+        sync: false
+      # Used for CORS when you *do* have a separate frontend origin.
+      # For single-service deployments, this can be left unset.
+      - key: FRONTEND_URL
+        sync: false
 

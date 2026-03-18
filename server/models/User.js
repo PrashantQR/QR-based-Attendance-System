@@ -49,7 +49,9 @@ const userSchema = new mongoose.Schema({
   },
   department: {
     type: String,
-    required: function() { return this.role === 'student'; }
+    // Optional: the current UI does not collect department at signup.
+    // Keep it nullable so registration doesn't fail validation.
+    required: false
   },
   year: {
     type: String,

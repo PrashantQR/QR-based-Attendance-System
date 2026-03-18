@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { academicData, mapSemesterToYear } from '../../constants/academicData';
 import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaIdCard, FaGraduationCap, FaPhone } from 'react-icons/fa';
 import { motion } from 'framer-motion';
+import api from '../../utils/api';
 
 const defaultCourses = ['MCA', 'BCA', 'BSc', 'BA', 'BCom'];
 
@@ -241,9 +242,9 @@ const Register = () => {
   React.useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const res = await fetch('/api/courses');
-        const json = await res.json();
-        if (json.success) {
+        const res = await api.get('/courses');
+        const json = res.data;
+        if (json?.success) {
           const dbCourses = (json.data || []).map((c) => c.name);
           const merged = [...new Set([...defaultCourses, ...dbCourses])];
           setCourses(merged);
@@ -269,14 +270,12 @@ const Register = () => {
         const standardSubjects =
           academicData[finalCourse]?.[formData.semester] || [];
 
-        const res = await fetch(
-          `/api/subjects?course=${encodeURIComponent(
-            finalCourse
-          )}&semester=${encodeURIComponent(formData.semester)}`
-        );
-        const json = await res.json();
+        const res = await api.get('/subjects', {
+          params: { course: finalCourse, semester: formData.semester }
+        });
+        const json = res.data;
 
-        const dbSubjects = json.success
+        const dbSubjects = json?.success
           ? (json.data || []).map((s) => s.name)
           : [];
 
@@ -303,14 +302,12 @@ const Register = () => {
         const standardSubjects =
           academicData[finalTeacherCourse]?.[formData.teacherSemester] || [];
 
-        const res = await fetch(
-          `/api/subjects?course=${encodeURIComponent(
-            finalTeacherCourse
-          )}&semester=${encodeURIComponent(formData.teacherSemester)}`
-        );
-        const json = await res.json();
+        const res = await api.get('/subjects', {
+          params: { course: finalTeacherCourse, semester: formData.teacherSemester }
+        });
+        const json = res.data;
 
-        const dbSubjects = json.success
+        const dbSubjects = json?.success
           ? (json.data || []).map((s) => s.name)
           : [];
 
@@ -531,21 +528,12 @@ const Register = () => {
                         if (!subjectName || !formData.teacherSemester) return;
 
                         try {
-                          const res = await fetch('/api/subjects', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              name: subjectName,
-                              course: finalTeacherCourse,
-                              semester: formData.teacherSemester
-                            })
+                          const res = await api.post('/subjects', {
+                            name: subjectName,
+                            course: finalTeacherCourse,
+                            semester: formData.teacherSemester
                           });
-
-                          const json = await res.json();
-                          if (!res.ok) {
-                            alert(json.error || 'Failed to add subject');
-                            return;
-                          }
+                          const json = res.data;
 
                           setAvailableTeacherSubjects((prev) =>
                             prev.includes(subjectName) ? prev : [...prev, subjectName]
@@ -559,7 +547,11 @@ const Register = () => {
                           setNewSubject('');
                         } catch (error) {
                           console.error('Add custom subject error:', error);
-                          alert('Failed to add subject');
+                          const msg =
+                            error?.response?.data?.error ||
+                            error?.response?.data?.message ||
+                            'Failed to add subject';
+                          alert(msg);
                         }
                       }}
                       className="rounded-xl bg-accent text-secondary px-4 py-2.5 text-sm font-semibold hover:bg-emerald-400"
