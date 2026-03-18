@@ -21,6 +21,7 @@ const qrRoutes = require('./routes/qr');
 const attendanceRoutes = require('./routes/attendance');
 const evaluationRoutes = require('./routes/evaluation');
 const feedbackRoutes = require('./routes/feedback');
+const evaluationsStatsRoutes = require('./routes/evaluationsStats');
 const academicRoutes = require('./routes/academic');
 
 const app = express();
@@ -135,6 +136,7 @@ app.use('/api/qr', qrRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/evaluation', evaluationRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/evaluations', evaluationsStatsRoutes);
 app.use('/api', academicRoutes);
 
 // Serve React client in production

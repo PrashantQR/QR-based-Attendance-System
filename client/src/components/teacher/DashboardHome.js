@@ -2,6 +2,14 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { useAuth } from '../../contexts/AuthContext';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip
+} from 'recharts';
 
 const DashboardHome = () => {
   const { isAuthenticated, loading: authLoading, user, logout } = useAuth();
@@ -16,6 +24,8 @@ const DashboardHome = () => {
   const [feedbacks, setFeedbacks] = useState([]);
   const [overallRating, setOverallRating] = useState(0);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [evaluationStats, setEvaluationStats] = useState(null);
+  const [evaluationStatsLoading, setEvaluationStatsLoading] = useState(false);
 
   const fetchDashboardStats = useCallback(async () => {
     try {
@@ -68,12 +78,38 @@ const DashboardHome = () => {
     }
   }, [user?._id]);
 
+  const fetchEvaluationStats = useCallback(async () => {
+    setEvaluationStatsLoading(true);
+    try {
+      const res = await api.get('/evaluations/stats');
+      const data = res.data;
+      setEvaluationStats({
+        total: data?.total ?? 0,
+        stats: data?.stats ?? {},
+        overall: data?.overall ?? 0
+      });
+    } catch (error) {
+      console.error('Error fetching evaluation stats:', error);
+      setEvaluationStats(null);
+    } finally {
+      setEvaluationStatsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!authLoading && isAuthenticated && user?.role === 'teacher') {
       fetchDashboardStats();
       fetchFeedback();
+      fetchEvaluationStats();
     }
-  }, [authLoading, isAuthenticated, user, fetchDashboardStats, fetchFeedback]);
+  }, [
+    authLoading,
+    isAuthenticated,
+    user,
+    fetchDashboardStats,
+    fetchFeedback,
+    fetchEvaluationStats
+  ]);
 
   const attendanceRate = useMemo(() => {
     if (!stats.totalStudents) return 0;
@@ -209,6 +245,72 @@ const DashboardHome = () => {
               </div>
             ))}
           </div>
+        )}
+      </div>
+
+      {/* Evaluation Insights */}
+      <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
+        <h2 className="text-lg font-semibold text-white mb-4">
+          Evaluation Insights
+        </h2>
+
+        {evaluationStatsLoading ? (
+          <p className="text-sm text-gray-400">Loading…</p>
+        ) : evaluationStats?.total ? (
+          <div>
+            {/* Average Rating Card */}
+            <div className="bg-green-500/20 p-4 rounded-lg border border-green-500/20 mb-4">
+              <div className="text-sm text-green-200">Average Rating</div>
+              <div className="text-3xl font-bold text-white">
+                {evaluationStats.overall} ⭐
+              </div>
+              <div className="text-sm text-green-200/80">
+                {evaluationStats.total} responses
+              </div>
+            </div>
+
+            {/* Bar Chart */}
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart
+                data={[
+                  {
+                    name: 'Teaching',
+                    value: evaluationStats.stats?.teachingQuality ?? 0
+                  },
+                  {
+                    name: 'Communication',
+                    value: evaluationStats.stats?.communication ?? 0
+                  },
+                  {
+                    name: 'Interaction',
+                    value: evaluationStats.stats?.interaction ?? 0
+                  },
+                  {
+                    name: 'Knowledge',
+                    value: evaluationStats.stats?.knowledge ?? 0
+                  },
+                  {
+                    name: 'Doubt Solving',
+                    value: evaluationStats.stats?.doubtSolving ?? 0
+                  }
+                ]}
+              >
+                <XAxis dataKey="name" stroke="#94a3b8" />
+                <YAxis domain={[0, 5]} stroke="#94a3b8" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 12
+                  }}
+                  formatter={(val) => [`${val}`, 'Average']}
+                />
+                <Bar dataKey="value" fill="#10b981" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-400">No feedback available yet</p>
         )}
       </div>
 
