@@ -15,8 +15,23 @@ const academicRoutes = require('./routes/academic');
 const app = express();
 app.set('trust proxy', 1);
 
+// Startup log (useful for Render logs)
+console.log('[boot] starting server');
+console.log('[boot] NODE_ENV =', process.env.NODE_ENV);
+console.log('[boot] PORT =', process.env.PORT);
+
 // Security middleware
 app.use(helmet());
+
+// Request logger (helps confirm API is being hit on Render)
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const ms = Date.now() - start;
+    console.log(`[req] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${ms}ms)`);
+  });
+  next();
+});
 
 // CORS configuration to allow frontend origins and let the library
 // handle allowed methods/headers for preflight correctly
@@ -104,5 +119,5 @@ mongoose.connect(process.env.MONGODB_URI, {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`[boot] server listening on ${PORT}`);
 }); 
