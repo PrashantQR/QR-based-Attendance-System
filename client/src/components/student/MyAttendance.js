@@ -17,21 +17,6 @@ const MyAttendance = () => {
   const [loading, setLoading] = useState(true);
   const [subjectFilter, setSubjectFilter] = useState('all');
   const enrolledSubjects = Array.isArray(user?.subjects) ? user.subjects : [];
-  const subjectSummary = attendance.reduce((acc, record) => {
-    const subject = record.qrCode?.subject;
-    if (!subject || (enrolledSubjects.length > 0 && !enrolledSubjects.includes(subject))) {
-      return acc;
-    }
-
-    if (!acc[subject]) {
-      acc[subject] = { total: 0, present: 0, late: 0 };
-    }
-
-    acc[subject].total += 1;
-    if (record.status === 'present') acc[subject].present += 1;
-    if (record.status === 'late') acc[subject].late += 1;
-    return acc;
-  }, {});
   const filteredAttendance = attendance.filter((record) => {
     if (subjectFilter === 'all') return true;
     return record.qrCode?.subject === subjectFilter;
@@ -77,246 +62,144 @@ const MyAttendance = () => {
 
   if (loading) {
     return (
-      <div className="loading-spinner">
-        <div className="spinner-border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="row mb-4">
-        <div className="col-12">
-          <h2 className="fw-bold text-white">My Attendance</h2>
-          <p className="text-white-50">View your attendance history</p>
-        </div>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-2">
+        <h2 className="text-2xl md:text-3xl font-semibold text-white">My Attendance</h2>
+        <p className="text-sm text-gray-400">View your attendance history</p>
       </div>
 
-      {/* Date Range Selector */}
-      <div className="row mb-4">
-        <div className="col-md-6">
-          <div className="card">
-            <div className="card-body">
-              <h6 className="card-title mb-3">
-                <FaCalendarAlt className="me-2" />
-                Date Range
-              </h6>
-              <div className="row">
-                <div className="col-md-6 mb-3">
-                  <label htmlFor="startDate" className="form-label">Start Date</label>
-                  <input
-                    type="date"
-                    className="form-control"
-                    id="startDate"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                </div>
-                <div className="col-md-6 mb-3">
-                  <label htmlFor="endDate" className="form-label">End Date</label>
-                  <input
-                    type="date"
-                    className="form-control"
-                    id="endDate"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
+      <div className="bg-white/5 rounded-2xl p-6 shadow-lg border border-white/10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label htmlFor="startDate" className="block text-xs font-medium text-gray-300 mb-1">
+              Start Date
+            </label>
+            <input
+              type="date"
+              className="w-full rounded-xl bg-primary/70 border border-white/10 px-3 py-2.5 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent/70 focus:border-accent/70"
+              id="startDate"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <label htmlFor="endDate" className="block text-xs font-medium text-gray-300 mb-1">
+              End Date
+            </label>
+            <input
+              type="date"
+              className="w-full rounded-xl bg-primary/70 border border-white/10 px-3 py-2.5 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent/70 focus:border-accent/70"
+              id="endDate"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <label htmlFor="subjectFilter" className="block text-xs font-medium text-gray-300 mb-1">
+              Filter by Subject
+            </label>
+            <select
+              id="subjectFilter"
+              className="w-full rounded-xl bg-primary/70 border border-white/10 px-3 py-2.5 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent/70 focus:border-accent/70"
+              value={subjectFilter}
+              onChange={(e) => setSubjectFilter(e.target.value)}
+            >
+              <option value="all">All Subjects</option>
+              {enrolledSubjects.map((subject) => (
+                <option key={subject} value={subject}>
+                  {subject}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
 
-      {/* Subject Filter */}
-      <div className="row mb-4">
-        <div className="col-md-6">
-          <div className="card">
-            <div className="card-body">
-              <label htmlFor="subjectFilter" className="form-label">Filter by Subject</label>
-              <select
-                id="subjectFilter"
-                className="form-select"
-                value={subjectFilter}
-                onChange={(e) => setSubjectFilter(e.target.value)}
-              >
-                <option value="all">All Subjects</option>
-                {enrolledSubjects.map((subject) => (
-                  <option key={subject} value={subject}>
-                    {subject}
-                  </option>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+        <StatCard label="Total" value={stats.total} />
+        <StatCard label="Present" value={stats.present} />
+        <StatCard label="Late" value={stats.late} />
+        <StatCard label="Rate" value={`${stats.attendanceRate}%`} />
+      </div>
+
+      <div className="bg-white/5 rounded-2xl p-6 shadow-lg border border-white/10">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-gray-200">
+            <FaChartBar className="inline mr-2" />
+            Attendance History
+          </h3>
+          <span className="text-xs text-gray-400">{filteredAttendance.length} records</span>
+        </div>
+
+        {filteredAttendance.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="text-xs text-gray-400 border-b border-white/10">
+                <tr>
+                  <th className="py-2 text-left font-medium">Date</th>
+                  <th className="py-2 text-left font-medium">Status</th>
+                  <th className="py-2 text-left font-medium">Time</th>
+                  <th className="py-2 text-left font-medium">Course</th>
+                  <th className="py-2 text-left font-medium">Semester</th>
+                  <th className="py-2 text-left font-medium">Subject</th>
+                  <th className="py-2 text-left font-medium">Teacher</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {filteredAttendance.map((record) => (
+                  <tr key={record._id} className="text-gray-200">
+                    <td className="py-2 whitespace-nowrap">
+                      {new Date(record.date).toLocaleDateString()}
+                    </td>
+                    <td className="py-2">
+                      <span
+                        className={[
+                          'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold border',
+                          record.status === 'present'
+                            ? 'bg-emerald-500/10 border-emerald-400/30 text-emerald-200'
+                            : record.status === 'late'
+                              ? 'bg-yellow-500/10 border-yellow-400/30 text-yellow-200'
+                              : 'bg-white/5 border-white/10 text-gray-300'
+                        ].join(' ')}
+                      >
+                        {record.status}
+                      </span>
+                    </td>
+                    <td className="py-2 whitespace-nowrap">
+                      {new Date(record.markedAt).toLocaleTimeString()}
+                    </td>
+                    <td className="py-2">{record.course || '—'}</td>
+                    <td className="py-2">{record.semester || '—'}</td>
+                    <td className="py-2">{record.subject || '—'}</td>
+                    <td className="py-2">{record.teacher?.name || '—'}</td>
+                  </tr>
                 ))}
-              </select>
-            </div>
+              </tbody>
+            </table>
           </div>
-        </div>
+        ) : (
+          <div className="text-center text-gray-400 py-10">
+            <FaCalendarAlt size={42} className="mx-auto mb-3 opacity-70" />
+            <p className="text-sm">No attendance records found for the selected range</p>
+          </div>
+        )}
       </div>
-
-      {/* Stats Cards */}
-      <div className="row mb-4">
-        <div className="col-md-3 mb-3">
-          <div className="stats-card">
-            <div className="stats-number">{stats.total}</div>
-            <div className="stats-label">Total Sessions</div>
-          </div>
-        </div>
-        <div className="col-md-3 mb-3">
-          <div className="stats-card">
-            <div className="stats-number">{stats.present}</div>
-            <div className="stats-label">Present</div>
-          </div>
-        </div>
-        <div className="col-md-3 mb-3">
-          <div className="stats-card">
-            <div className="stats-number">{stats.late}</div>
-            <div className="stats-label">Late</div>
-          </div>
-        </div>
-        <div className="col-md-3 mb-3">
-          <div className="stats-card">
-            <div className="stats-number">{stats.attendanceRate}%</div>
-            <div className="stats-label">Attendance Rate</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Attendance History */}
-      <div className="row">
-        <div className="col-12">
-          <div className="card">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center mb-3">
-                <h5 className="card-title mb-0">
-                  <FaChartBar className="me-2" />
-                  Attendance History
-                </h5>
-                <span className="text-muted">
-                  {filteredAttendance.length} records found
-                </span>
-              </div>
-
-              {filteredAttendance.length > 0 ? (
-                <div className="table-responsive">
-                  <table className="table table-hover attendance-table">
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Status</th>
-                        <th>Time</th>
-                        <th>Location</th>
-                        <th>Course</th>
-                        <th>Semester</th>
-                        <th>Subject</th>
-                        <th>Teacher</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredAttendance.map((record) => (
-                        <tr key={record._id}>
-                          <td>
-                            <strong>
-                              {new Date(record.date).toLocaleDateString()}
-                            </strong>
-                          </td>
-                          <td>
-                            <span className={`status-badge status-${record.status}`}>
-                              {record.status}
-                            </span>
-                          </td>
-                          <td>
-                            {new Date(record.markedAt).toLocaleTimeString()}
-                          </td>
-                          <td>{record.location}</td>
-                          <td>{record.course}</td>
-                          <td>{record.semester || 'N/A'}</td>
-                          <td>{record.subject || 'N/A'}</td>
-                          <td>{record.teacher?.name || 'N/A'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center text-muted py-4">
-                  <FaCalendarAlt size={50} className="mb-3" />
-                  <p>No attendance records found for the selected date range</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Attendance Summary */}
-      {filteredAttendance.length > 0 && (
-        <div className="row mt-4">
-          <div className="col-12">
-            <div className="card">
-              <div className="card-body">
-                <h5 className="card-title mb-3">Attendance Summary</h5>
-                <div className="row">
-                  <div className="col-md-6">
-                    <p><strong>Total Sessions:</strong> {stats.total}</p>
-                    <p><strong>Present Days:</strong> {stats.present}</p>
-                    <p><strong>Course:</strong> {user?.course || 'N/A'}</p>
-                  </div>
-                  <div className="col-md-6">
-                    <p><strong>Late Days:</strong> {stats.late}</p>
-                    <p><strong>Attendance Rate:</strong> {stats.attendanceRate}%</p>
-                    <p><strong>Semester:</strong> {user?.semester || 'N/A'}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Subject-wise Summary */}
-      {attendance.length > 0 && (
-        <div className="row mt-4">
-          <div className="col-12">
-            <div className="card">
-              <div className="card-body">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h5 className="card-title mb-0">Subject-wise Summary</h5>
-                  <span className="text-muted">
-                    {Object.keys(subjectSummary).length} subject{Object.keys(subjectSummary).length === 1 ? '' : 's'}
-                  </span>
-                </div>
-
-                {Object.keys(subjectSummary).length > 0 ? (
-                  <div className="row">
-                    {Object.entries(subjectSummary).map(([subject, summary]) => {
-                      const rate = summary.total > 0 ? Math.round((summary.present / summary.total) * 100) : 0;
-                      return (
-                        <div className="col-md-4 mb-3" key={subject}>
-                          <div className="stats-card h-100">
-                            <div className="stats-label">{subject}</div>
-                            <div className="stats-number">{rate}%</div>
-                            <small className="text-muted d-block">
-                              {summary.present} present / {summary.total} sessions
-                            </small>
-                            <small className="text-muted d-block">
-                              {summary.late} late
-                            </small>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-muted mb-0">No subject-wise attendance data available.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
+
+const StatCard = ({ label, value }) => (
+  <div className="bg-white/5 rounded-2xl p-4 shadow-lg border border-white/10">
+    <div className="text-xs text-gray-400 mb-2">{label}</div>
+    <div className="text-2xl md:text-3xl font-semibold text-white">{value}</div>
+  </div>
+);
 
 export default MyAttendance; 

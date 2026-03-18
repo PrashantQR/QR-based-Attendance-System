@@ -205,151 +205,141 @@ const QRScanner = () => {
   }, []);
 
   return (
-    <div>
-      <div className="row mb-3 align-items-center">
-        <div className="col">
-          <h2 className="fw-bold text-white mb-0">Scan QR Code</h2>
-          <p className="text-white-50 mb-0">Scan the QR code to mark your attendance</p>
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <h2 className="text-2xl md:text-3xl font-semibold text-white">Scan QR Code</h2>
+          <p className="text-sm text-gray-400">Scan the QR code to mark your attendance</p>
         </div>
-        <div className="col-auto">
-          <button className="btn btn-outline-light" onClick={() => navigate('/student')}>
-            <FaArrowLeft className="me-2" /> Dashboard
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => navigate('/student')}
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-gray-200 hover:bg-white/10 transition"
+        >
+          <FaArrowLeft /> Dashboard
+        </button>
       </div>
 
-      <div className="row justify-content-center">
-        <div className="col-md-8">
-          <div className="card">
-            <div className="card-body">
-              <h5 className="card-title mb-3 text-center">QR Code Scanner</h5>
-              <div className="alert alert-dark border-0 mb-3">
-                <div className="d-flex flex-wrap gap-2 align-items-center justify-content-between">
-                  <div>
-                    <strong>Enrolled Subjects:</strong>{' '}
-                    {Array.isArray(user?.subjects) && user.subjects.length > 0
-                      ? user.subjects.join(', ')
-                      : 'No subjects assigned'}
-                  </div>
-                  <div>
-                    <small className="text-muted">
-                      {user?.course || 'N/A'} · {user?.semester || 'N/A'}
-                    </small>
-                  </div>
-                </div>
+      <div className="flex justify-center items-center min-h-[70vh]">
+        <div className="w-full max-w-md bg-white/5 rounded-2xl p-6 shadow-lg border border-white/10">
+          <h3 className="text-sm font-semibold text-gray-200 mb-4 text-center">QR Code Scanner</h3>
+
+          <div className="bg-black/30 rounded-xl p-3 border border-white/10 mb-4">
+            <div className="flex flex-col gap-2 text-xs text-gray-300">
+              <div>
+                <span className="font-semibold text-gray-200">Enrolled Subjects:</span>{' '}
+                {Array.isArray(user?.subjects) && user.subjects.length > 0
+                  ? user.subjects.join(', ')
+                  : 'No subjects assigned'}
               </div>
-              
-              {!scanning && !result && (
-                <div className="text-center">
-                  <FaQrcode size={100} className="text-muted mb-3" />
-                  <p className="text-muted">Click the button below to start scanning</p>
+              <div className="text-gray-400">
+                {user?.course || 'N/A'} · {user?.semester || 'N/A'}
+              </div>
+            </div>
+          </div>
+
+          {!scanning && !result && (
+            <div className="text-center">
+              <FaQrcode size={72} className="text-gray-500 mx-auto mb-3" />
+              <p className="text-sm text-gray-400 mb-4">Click below to start scanning</p>
+              <button
+                type="button"
+                onClick={startScanner}
+                disabled={initializing}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent text-secondary px-4 py-2.5 text-sm font-semibold hover:bg-emerald-400 disabled:opacity-60"
+              >
+                {initializing ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-secondary/40 border-t-secondary rounded-full animate-spin" />
+                    Initializing...
+                  </>
+                ) : (
+                  <>
+                    <FaCamera />
+                    Start Scanning
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {scanning && (
+            <div className="text-center">
+              <div className="scanner-container mb-3 flex justify-center">
+                <div id="qr-reader" className="w-full" />
+              </div>
+              <p className="text-sm text-gray-400 mb-1">Point your camera at the QR code</p>
+              {initializing && <p className="text-xs text-emerald-300">Opening camera...</p>}
+            </div>
+          )}
+
+          {result && (
+            <div className="text-center">
+              <div
+                className={[
+                  'rounded-xl p-3 border text-sm mb-4',
+                  result.success
+                    ? 'bg-emerald-500/10 border-emerald-400/30 text-emerald-200'
+                    : 'bg-red-500/10 border-red-400/30 text-red-200'
+                ].join(' ')}
+              >
+                {result.success ? <FaCheck className="inline mr-2" /> : <FaTimes className="inline mr-2" />}
+                {result.message}
+              </div>
+
+              <div className="mt-3 flex flex-col sm:flex-row justify-center gap-2">
+                {result.success ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/student')}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500/90 text-white px-4 py-2 text-sm font-semibold hover:bg-emerald-500"
+                    >
+                      <FaArrowLeft /> Back to Dashboard
+                    </button>
+                    <button
+                      type="button"
+                      onClick={resetScanner}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-gray-200 hover:bg-white/10"
+                    >
+                      <FaQrcode /> Scan Another
+                    </button>
+                  </>
+                ) : (
                   <button
-                    className="btn btn-primary"
-                    onClick={startScanner}
-                    disabled={initializing}
+                    type="button"
+                    onClick={resetScanner}
+                    disabled={loading}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent text-secondary px-4 py-2 text-sm font-semibold hover:bg-emerald-400 disabled:opacity-60"
                   >
-                    {initializing ? (
+                    {loading ? (
                       <>
-                        <span className="spinner-border spinner-border-sm me-2" />
-                        Initializing...
+                        <span className="w-4 h-4 border-2 border-secondary/40 border-t-secondary rounded-full animate-spin" />
+                        Processing...
                       </>
                     ) : (
                       <>
-                        <FaCamera className="me-2" />
-                        Start Scanning
+                        <FaQrcode />
+                        Scan Another
                       </>
                     )}
                   </button>
-                </div>
-              )}
-
-              {scanning && (
-                <div className="text-center">
-                  <div className="scanner-container mb-3">
-                    <div id="qr-reader"></div>
-                  </div>
-                  <p className="text-muted mb-1">Point your camera at the QR code</p>
-                  {initializing && (
-                    <p className="text-success small">Opening camera...</p>
-                  )}
-                </div>
-              )}
-
-              {result && (
-                <div className="text-center">
-                  {result.success ? (
-                    <div className="alert alert-success">
-                      <FaCheck className="me-2" />
-                      {result.message}
-                    </div>
-                  ) : (
-                    <div className="alert alert-danger">
-                      <FaTimes className="me-2" />
-                      {result.message}
-                    </div>
-                  )}
-                  
-                  <div className="mt-3 d-flex flex-column flex-sm-row justify-content-center gap-2">
-                    {result.success ? (
-                      <>
-                        <button className="btn btn-success" onClick={() => navigate('/student')}>
-                          <FaArrowLeft className="me-2" />
-                          Back to Dashboard
-                        </button>
-                        <button className="btn btn-outline-primary" onClick={resetScanner}>
-                          <FaQrcode className="me-2" />
-                          Scan Another
-                        </button>
-                      </>
-                    ) : (
-                      <button className="btn btn-primary" onClick={resetScanner} disabled={loading}>
-                        {loading ? (
-                          <>
-                            <span className="spinner-border spinner-border-sm me-2" />
-                            Processing...
-                          </>
-                        ) : (
-                          <>
-                            <FaQrcode className="me-2" />
-                            Scan Another
-                          </>
-                        )}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* Instructions */}
-      <div className="row mt-4">
-        <div className="col-12">
-          <div className="card">
-            <div className="card-body">
-              <h5 className="card-title mb-3">Instructions</h5>
-              <ul className="list-unstyled">
-                <li className="mb-2">
-                  <strong>1.</strong> Click "Start Scanning" to activate your camera
-                </li>
-                <li className="mb-2">
-                  <strong>2.</strong> Point your camera at the QR code displayed by your teacher
-                </li>
-                <li className="mb-2">
-                  <strong>3.</strong> Hold steady until the QR code is detected
-                </li>
-                <li className="mb-2">
-                  <strong>4.</strong> Your attendance will be automatically marked
-                </li>
-                <li className="mb-2">
-                  <strong>5.</strong> You can only mark attendance once per QR code
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
+      <div className="bg-white/5 rounded-2xl p-6 shadow-lg border border-white/10">
+        <h3 className="text-sm font-semibold text-gray-200 mb-3">Instructions</h3>
+        <ul className="space-y-2 text-sm text-gray-300">
+          <li><span className="font-semibold text-gray-200">1.</span> Click “Start Scanning” to activate your camera</li>
+          <li><span className="font-semibold text-gray-200">2.</span> Point your camera at the QR code displayed by your teacher</li>
+          <li><span className="font-semibold text-gray-200">3.</span> Hold steady until the QR code is detected</li>
+          <li><span className="font-semibold text-gray-200">4.</span> Your attendance will be automatically marked</li>
+          <li><span className="font-semibold text-gray-200">5.</span> You can only mark attendance once per QR code</li>
+        </ul>
       </div>
     </div>
   );

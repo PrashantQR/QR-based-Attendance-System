@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
-import { FaQrcode, FaCalendarAlt, FaUser } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
 const DashboardHome = () => {
@@ -81,43 +79,6 @@ const DashboardHome = () => {
         <h2 className="text-2xl md:text-3xl font-semibold text-white">Student Dashboard</h2>
         <p className="text-sm text-gray-400">Welcome back, {user?.name}!</p>
       </div>
-
-      {/* Quick Actions */}
-      <motion.section
-        layout
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
-        className="bg-secondary/70 border border-white/5 rounded-2.5xl p-4 md:p-6 shadow-soft-glass backdrop-blur-xl"
-      >
-        <h3 className="text-sm font-semibold text-gray-300 mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <QuickActionCard
-            to="/student/scan"
-            icon={<FaQrcode className="text-accent" size={32} />}
-            title="Scan QR Code"
-            description="Mark your attendance"
-          />
-          <QuickActionCard
-            to="/student/my-attendance"
-            icon={<FaCalendarAlt className="text-emerald-400" size={32} />}
-            title="My Attendance"
-            description="View your attendance history"
-          />
-          <QuickActionCard
-            to="/profile"
-            icon={<FaUser className="text-sky-400" size={32} />}
-            title="Profile"
-            description="Update your profile"
-          />
-          <QuickActionCard
-            to="/student/evaluate-instructor"
-            icon={<FaUser className="text-yellow-400" size={32} />}
-            title="Instructor Evaluation"
-            description="Submit anonymous feedback"
-          />
-        </div>
-      </motion.section>
 
       {/* Subject-wise Attendance */}
       <motion.section
@@ -226,29 +187,6 @@ const DashboardHome = () => {
     </div>
   );
 };
-
-const QuickActionCard = ({ to, icon, title, description }) => (
-  <motion.div
-    whileHover={{ scale: 1.03, y: -2 }}
-    transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-    className="group"
-  >
-    <Link
-      to={to}
-      className="block bg-primary/80 border border-white/5 rounded-2.5xl px-4 py-5 h-full shadow-soft-glass hover:bg-primary/90 transition-colors duration-200"
-    >
-      <div className="flex flex-col items-start gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-black/40">
-          {icon}
-        </div>
-        <div>
-          <h4 className="text-sm font-semibold text-gray-100 mb-1">{title}</h4>
-          <p className="text-xs text-gray-400">{description}</p>
-        </div>
-      </div>
-    </Link>
-  </motion.div>
-);
 
 const StatCard = ({ label, value }) => (
   <motion.div

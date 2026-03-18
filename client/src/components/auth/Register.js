@@ -528,12 +528,11 @@ const Register = () => {
                         if (!subjectName || !formData.teacherSemester) return;
 
                         try {
-                          const res = await api.post('/subjects', {
+                          await api.post('/subjects', {
                             name: subjectName,
                             course: finalTeacherCourse,
                             semester: formData.teacherSemester
                           });
-                          const json = res.data;
 
                           setAvailableTeacherSubjects((prev) =>
                             prev.includes(subjectName) ? prev : [...prev, subjectName]
