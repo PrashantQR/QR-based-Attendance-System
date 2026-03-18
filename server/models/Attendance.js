@@ -69,6 +69,9 @@ attendanceSchema.index({ student: 1, date: 1 });
 attendanceSchema.index({ qrCode: 1 });
 attendanceSchema.index({ teacher: 1, date: 1 });
 attendanceSchema.index({ isDeleted: 1 });
+// Prevent duplicate attendance for the same student/QR session.
+// Soft-deleted rows (`isDeleted: true`) are allowed to be recreated.
+attendanceSchema.index({ student: 1, qrCode: 1, isDeleted: 1 }, { unique: true });
 
 // Virtual for formatted date
 attendanceSchema.virtual('formattedDate').get(function() {

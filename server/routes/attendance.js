@@ -214,6 +214,13 @@ router.post('/mark', protect, authorize('student'), async (req, res) => {
     });
   } catch (error) {
     console.error('Mark attendance error:', error);
+    // Handle race conditions via unique index.
+    if (error?.code === 11000) {
+      return res.status(400).json({
+        error: 'Attendance already marked',
+        message: 'You have already marked attendance for this session'
+      });
+    }
     res.status(500).json({
       error: 'Server error',
       message: 'An error occurred while marking attendance'

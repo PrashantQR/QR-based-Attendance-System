@@ -10,11 +10,18 @@ const QRScanner = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [scanning, setScanning] = useState(true);
+  const [scanned, setScanned] = useState(false);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(false);
   const scannerRef = useRef(null);
   const isStartingRef = useRef(false);
+  const scannedRef = useRef(false);
+  const [feedbackModal, setFeedbackModal] = useState({
+    open: false,
+    title: '',
+    message: ''
+  });
 
   useEffect(() => {
     return () => {
@@ -29,13 +36,75 @@ const QRScanner = () => {
   }, []);
 
   const handleScan = async (decodedText) => {
-    if (decodedText) {
-      setScanning(false);
+    if (!decodedText) return;
+    if (scannedRef.current || loading || initializing) return;
+
+    // CRITICAL: lock further scans while we validate + mark.
+    scannedRef.current = true;
+    setScanned(true);
+    setScanning(false);
+
+    try {
+      // Stop camera after a successful decode to prevent duplicate marks.
       if (scannerRef.current) {
-        scannerRef.current.clear();
+        try {
+          await scannerRef.current.stop();
+        } catch (_) {}
+        try {
+          await scannerRef.current.clear();
+        } catch (_) {}
       }
-      setResult(decodedText);
-      await validateAndMarkAttendance(decodedText);
+
+      const markResult = await validateAndMarkAttendance(decodedText);
+
+      setResult({
+        success: markResult.success,
+        message: markResult.message,
+        data: markResult.data
+      });
+
+      if (markResult.success) {
+        setFeedbackModal({
+          open: true,
+          title: 'Attendance Marked ✅',
+          message: markResult.message
+        });
+        toast.success(markResult.message);
+      } else if (markResult.alreadyMarked) {
+        setFeedbackModal({
+          open: true,
+          title: 'Already marked for this session',
+          message: markResult.message
+        });
+        toast.info(markResult.message);
+      } else {
+        setFeedbackModal({
+          open: true,
+          title: 'Failed to mark attendance',
+          message: markResult.message
+        });
+        toast.error(markResult.message);
+      }
+
+      // Allow next scan after a short delay (anti-glitch).
+      setTimeout(() => {
+        setFeedbackModal((prev) => ({ ...prev, open: false }));
+        setScanned(false);
+        scannedRef.current = false;
+        resetScanner();
+      }, 3000);
+    } catch (err) {
+      const message =
+        err?.response?.data?.message || 'Failed to mark attendance';
+      setResult({ success: false, message });
+      toast.error(message);
+
+      setTimeout(() => {
+        setScanned(false);
+        scannedRef.current = false;
+        setFeedbackModal({ open: false, title: '', message: '' });
+        resetScanner();
+      }, 3000);
     }
   };
 
@@ -92,11 +161,10 @@ const QRScanner = () => {
 
   const validateAndMarkAttendance = async (qrCode) => {
     setLoading(true);
-    
     try {
       // Get current location coordinates
       const coordinates = await getCurrentLocation();
-      
+
       const token = localStorage.getItem('token');
       const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -107,33 +175,46 @@ const QRScanner = () => {
         { headers: authHeaders }
       );
 
-      if (validateResponse.data.success) {
-        // Mark attendance with coordinates
-        const attendanceResponse = await api.post(
-          '/attendance/mark',
-          {
-            qrCodeId: validateResponse.data.data._id,
-            coordinates
-          },
-          { headers: authHeaders }
-        );
-
-        if (attendanceResponse.data.success) {
-          toast.success(attendanceResponse.data.message);
-          setResult({
-            success: true,
-            message: attendanceResponse.data.message,
-            data: attendanceResponse.data.data
-          });
-        }
+      if (!validateResponse.data?.success) {
+        return {
+          success: false,
+          alreadyMarked: false,
+          message:
+            validateResponse.data?.message ||
+            'Invalid QR code or not a valid session'
+        };
       }
+
+      const attendanceResponse = await api.post(
+        '/attendance/mark',
+        {
+          qrCodeId: validateResponse.data.data._id,
+          coordinates
+        },
+        { headers: authHeaders }
+      );
+
+      return {
+        success: Boolean(attendanceResponse.data?.success),
+        alreadyMarked: false,
+        message:
+          attendanceResponse.data?.message ||
+          'Attendance marked successfully',
+        data: attendanceResponse.data?.data || null
+      };
     } catch (error) {
-      const message = error.response?.data?.message || 'Failed to mark attendance';
-      toast.error(message);
-      setResult({
+      const message =
+        error.response?.data?.message || 'Failed to mark attendance';
+      const alreadyMarked =
+        message.toLowerCase().includes('already marked') ||
+        error.response?.data?.error === 'Attendance already marked';
+
+      return {
         success: false,
-        message: message
-      });
+        alreadyMarked,
+        message,
+        data: null
+      };
     } finally {
       setLoading(false);
     }
@@ -245,7 +326,7 @@ const QRScanner = () => {
               <button
                 type="button"
                 onClick={startScanner}
-                disabled={initializing}
+                disabled={initializing || scanned}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent text-secondary px-4 py-2.5 text-sm font-semibold hover:bg-emerald-400 disabled:opacity-60"
               >
                 {initializing ? (
@@ -330,6 +411,22 @@ const QRScanner = () => {
           )}
         </div>
       </div>
+
+      {feedbackModal.open && (
+        <div
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => {}}
+        >
+          <div className="w-full max-w-sm bg-slate-900/95 border border-slate-700 rounded-xl p-5">
+            <h3 className="text-lg font-semibold text-white mb-2">
+              {feedbackModal.title}
+            </h3>
+            <p className="text-sm text-gray-300">{feedbackModal.message}</p>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white/5 rounded-2xl p-6 shadow-lg border border-white/10">
         <h3 className="text-sm font-semibold text-gray-200 mb-3">Instructions</h3>
