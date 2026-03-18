@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { FaCalendarAlt, FaTrash, FaDownload, FaEye } from 'react-icons/fa';
@@ -14,47 +14,79 @@ const AttendanceView = () => {
   const [loading, setLoading] = useState(true);
   const [subjectFilter, setSubjectFilter] = useState('all');
 
-  const subjectSummary = useMemo(
-    () =>
-      attendance.reduce((acc, record) => {
-        const subject = record.qrCode?.subject || 'N/A';
-        if (!acc[subject]) {
-          acc[subject] = { total: 0, present: 0, late: 0 };
-        }
-        acc[subject].total += 1;
-        if (record.status === 'present') acc[subject].present += 1;
-        if (record.status === 'late') acc[subject].late += 1;
-        return acc;
-      }, {}),
-    [attendance]
-  );
+  const [subjectSummary, setSubjectSummary] = useState([]);
 
-  const filteredAttendance = useMemo(
-    () =>
-      attendance.filter((record) => {
-        if (subjectFilter === 'all') return true;
-        return record.qrCode?.subject === subjectFilter;
-      }),
-    [attendance, subjectFilter]
-  );
+  const [showStudents, setShowStudents] = useState(false);
+  const [studentsLoading, setStudentsLoading] = useState(false);
+  const [registeredStudents, setRegisteredStudents] = useState([]);
+
+  const selectedSubjectLabel =
+    subjectFilter === 'all' ? 'All Subjects' : subjectFilter;
 
   const fetchAttendance = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/attendance/daily?date=${selectedDate}`);
-      setAttendance(response.data.data.attendance);
-      setStats(response.data.data.stats);
+      const formattedDate = new Date(selectedDate)
+        .toISOString()
+        .split('T')[0];
+
+      const subject =
+        subjectFilter === 'all' ? '' : encodeURIComponent(subjectFilter);
+      const subjectQuery = subject ? `&subject=${subject}` : '';
+
+      const response = await api.get(
+        `/attendance?date=${formattedDate}${subjectQuery}`
+      );
+
+      const data = response.data?.data;
+      setAttendance(Array.isArray(data?.attendance) ? data.attendance : []);
+      setStats(data?.stats || {});
+      setSubjectSummary(
+        Array.isArray(data?.subjectSummary) ? data.subjectSummary : []
+      );
     } catch (error) {
       console.error('Error fetching attendance:', error);
       toast.error('Failed to fetch attendance data');
     } finally {
       setLoading(false);
     }
-  }, [selectedDate]);
+  }, [selectedDate, subjectFilter]);
 
   useEffect(() => {
     fetchAttendance();
   }, [fetchAttendance]);
+
+  const fetchRegisteredStudents = useCallback(async () => {
+    if (!user?._id) return;
+
+    setStudentsLoading(true);
+    try {
+      const subject = subjectFilter === 'all' ? '' : subjectFilter;
+      const course = user?.course || '';
+      const semester = user?.semester || '';
+
+      const params = new URLSearchParams();
+      params.append('teacherId', String(user._id));
+      if (subject) params.append('subject', subject);
+      if (course) params.append('course', course);
+      if (semester) params.append('semester', semester);
+
+      const res = await api.get(`/students?${params.toString()}`);
+      const data = res.data?.data;
+      setRegisteredStudents(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching registered students:', error);
+      toast.error('Failed to fetch registered students');
+      setRegisteredStudents([]);
+    } finally {
+      setStudentsLoading(false);
+    }
+  }, [user?._id, subjectFilter, user?.course, user?.semester]);
+
+  const handleTotalStudentsClick = async () => {
+    await fetchRegisteredStudents();
+    setShowStudents(true);
+  };
 
   const deleteAttendance = async (id) => {
     if (
@@ -81,8 +113,11 @@ const AttendanceView = () => {
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="spinner-border" role="status">
-          <span className="visually-hidden">Loading...</span>
+        <div className="flex flex-col items-center gap-3">
+          <div className="spinner-border" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="text-sm text-gray-400">Loading attendance...</p>
         </div>
       </div>
     );
@@ -165,7 +200,14 @@ const AttendanceView = () => {
 
         {/* Stats cards */}
         <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
-          <SummaryCard title="Total Students" value={stats.total || 0} />
+          <div
+            onClick={handleTotalStudentsClick}
+            className="cursor-pointer"
+            role="button"
+            tabIndex={0}
+          >
+            <SummaryCard title="Total Students" value={stats.total || 0} />
+          </div>
           <SummaryCard title="Present" value={stats.present || 0} />
           <SummaryCard title="Late" value={stats.late || 0} />
           <SummaryCard title="Attendance Rate" value={`${attendanceRate}%`} />
@@ -198,7 +240,7 @@ const AttendanceView = () => {
           </div>
         </div>
 
-        {filteredAttendance.length > 0 ? (
+        {attendance.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm text-gray-200">
               <thead className="bg-slate-800/90">
@@ -217,7 +259,7 @@ const AttendanceView = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredAttendance.map((record) => (
+                {attendance.map((record) => (
                   <tr
                     key={record._id}
                     className="border-b border-slate-800 hover:bg-slate-800/60"
@@ -229,9 +271,9 @@ const AttendanceView = () => {
                     </Td>
                     <Td>{record.student.studentId}</Td>
                     <Td>{record.student.department}</Td>
-                    <Td>{record.qrCode?.course || 'N/A'}</Td>
-                    <Td>{record.qrCode?.semester || 'N/A'}</Td>
-                    <Td>{record.qrCode?.subject || 'N/A'}</Td>
+                    <Td>{record.qrCode?.course || '—'}</Td>
+                    <Td>{record.qrCode?.semester || '—'}</Td>
+                    <Td>{record.qrCode?.subject || '—'}</Td>
                     <Td>{record.student.year}</Td>
                     <Td>{record.student.mobileNumber}</Td>
                     <Td>
@@ -267,7 +309,7 @@ const AttendanceView = () => {
         ) : (
           <div className="flex flex-col items-center justify-center py-8 text-gray-400 text-sm">
             <FaCalendarAlt size={40} className="mb-3 text-gray-500" />
-            <p>No attendance records found for this date</p>
+            <p>No records found for selected filters</p>
           </div>
         )}
       </div>
@@ -277,28 +319,26 @@ const AttendanceView = () => {
         <h2 className="text-lg font-semibold text-white mb-4">
           Subject-wise Summary
         </h2>
-        {Object.keys(subjectSummary).length > 0 ? (
+        {subjectSummary.length > 0 ? (
           <div className="grid md:grid-cols-3 gap-4">
-            {Object.entries(subjectSummary).map(([subject, summary]) => (
+            {subjectSummary.map((s) => (
               <div
-                key={subject}
+                key={s.subject || 'unknown'}
                 className="bg-slate-950/70 border border-slate-700 rounded-xl p-4"
               >
-                <p className="text-sm text-slate-100 mb-1">{subject}</p>
+                <p className="text-sm text-slate-100 mb-1">
+                  {s.subject || '—'}
+                </p>
                 <div className="w-full bg-slate-800 h-2 rounded overflow-hidden mb-1">
                   <div
                     className="bg-emerald-500 h-2"
                     style={{
-                      width: `${
-                        summary.total > 0
-                          ? Math.round((summary.present / summary.total) * 100)
-                          : 0
-                      }%`
+                      width: `${Math.round(s.percentage || 0)}%`
                     }}
                   />
                 </div>
                 <p className="text-xs text-gray-400">
-                  {summary.present} present / {summary.total} sessions
+                  {s.present || 0} present / {s.total || 0} sessions
                 </p>
               </div>
             ))}
@@ -309,6 +349,77 @@ const AttendanceView = () => {
           </p>
         )}
       </div>
+
+      {/* Registered Students Modal */}
+      {showStudents && (
+        <div
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowStudents(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="w-full max-w-4xl bg-slate-900/95 border border-slate-700 rounded-xl p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-white">
+                  Registered Students
+                </h2>
+                <p className="text-sm text-gray-400 mt-1">
+                  {selectedSubjectLabel} • {user?.course || '—'} •{' '}
+                  {user?.semester || '—'}
+                </p>
+              </div>
+              <button
+                className="px-3 py-1 rounded border border-slate-700 text-gray-300 hover:bg-slate-800"
+                onClick={() => setShowStudents(false)}
+              >
+                Close
+              </button>
+            </div>
+
+            {studentsLoading ? (
+              <p className="text-sm text-gray-400">Loading students…</p>
+            ) : registeredStudents.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm text-gray-200">
+                  <thead className="bg-slate-800/90">
+                    <tr>
+                      <Th>Student Name</Th>
+                      <Th>Student ID</Th>
+                      <Th>Course</Th>
+                      <Th>Semester</Th>
+                      <Th>Mobile</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {registeredStudents.map((s) => (
+                      <tr
+                        key={s._id}
+                        className="border-b border-slate-800 hover:bg-slate-800/60"
+                      >
+                        <Td>
+                          <span className="font-semibold">{s.name}</span>
+                        </Td>
+                        <Td>{s.studentId}</Td>
+                        <Td>{s.course || '—'}</Td>
+                        <Td>{s.semester || '—'}</Td>
+                        <Td>{s.mobileNumber || '—'}</Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400">
+                No students found for selected filters.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -5,6 +5,138 @@ const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
+const getUtcDateRange = (dateStr) => {
+  const startOfDay = new Date(dateStr);
+  startOfDay.setUTCHours(0, 0, 0, 0);
+
+  const endOfDay = new Date(dateStr);
+  endOfDay.setUTCHours(23, 59, 59, 999);
+
+  return { startOfDay, endOfDay };
+};
+
+const getSubjectWiseSummary = async (baseQuery) => {
+  const qrCollection = QRCodeModel.collection.name;
+
+  return Attendance.aggregate([
+    { $match: baseQuery },
+    {
+      $lookup: {
+        from: qrCollection,
+        localField: 'qrCode',
+        foreignField: '_id',
+        as: 'qr'
+      }
+    },
+    { $unwind: '$qr' },
+    {
+      $group: {
+        _id: '$qr.subject',
+        total: { $sum: 1 },
+        present: {
+          $sum: {
+            $cond: [{ $eq: ['$status', 'present'] }, 1, 0]
+          }
+        }
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        subject: '$_id',
+        total: 1,
+        present: 1,
+        percentage: {
+          $cond: [
+            { $gt: ['$total', 0] },
+            { $multiply: [{ $divide: ['$present', '$total'] }, 100] },
+            0
+          ]
+        }
+      }
+    }
+  ]);
+};
+
+// Fetch teacher attendance for a single date (+ optional subject filter)
+const getAttendanceForTeacherDate = async ({ teacherId, dateStr, subject }) => {
+  const { startOfDay, endOfDay } = getUtcDateRange(dateStr);
+
+  const baseQuery = {
+    date: { $gte: startOfDay, $lte: endOfDay },
+    teacher: teacherId,
+    isDeleted: false
+  };
+
+  if (subject && subject !== 'all') {
+    const qrCodes = await QRCodeModel.find({
+      subject,
+      generatedBy: teacherId
+    }).select('_id');
+
+    const qrIds = qrCodes.map((q) => q._id);
+    baseQuery.qrCode = { $in: qrIds };
+  }
+
+  const records = await Attendance.find(baseQuery)
+    .populate('student', 'name studentId department year mobileNumber')
+    .populate(
+      'qrCode',
+      'code generatedAt expiresAt description course semester subject'
+    )
+    .sort({ markedAt: 1 });
+
+  const stats = {
+    present: 0,
+    late: 0,
+    absent: 0,
+    total: records.length
+  };
+
+  for (const r of records) {
+    if (r.status === 'present') stats.present += 1;
+    else if (r.status === 'late') stats.late += 1;
+    else if (r.status === 'absent') stats.absent += 1;
+  }
+
+  const subjectSummary = await getSubjectWiseSummary(baseQuery);
+
+  return { attendance: records, stats, subjectSummary };
+};
+
+// @desc    Get attendance for a date (and optional subject)
+// @route   GET /api/attendance?date=YYYY-MM-DD&subject=...
+// @access  Private (Teachers only)
+router.get('/', protect, authorize('teacher'), async (req, res) => {
+  try {
+    const dateStr = req.query.date || new Date().toISOString().split('T')[0];
+    const subject = req.query.subject;
+
+    const { attendance, stats, subjectSummary } =
+      await getAttendanceForTeacherDate({
+        teacherId: req.user._id,
+        dateStr,
+        subject
+      });
+
+    return res.json({
+      success: true,
+      data: {
+        date: dateStr,
+        attendance,
+        stats,
+        subjectSummary
+      }
+    });
+  } catch (error) {
+    console.error('Get attendance error:', error);
+    return res.status(500).json({
+      error: 'Server error',
+      message: 'An error occurred while fetching attendance'
+    });
+  }
+});
+
 // @desc    Mark attendance (for students)
 // @route   POST /api/attendance/mark
 // @access  Private (Students only)
@@ -69,7 +201,10 @@ router.post('/mark', protect, authorize('student'), async (req, res) => {
     });
 
     // Populate the attendance record
-    await attendance.populate('qrCode', 'code generatedAt expiresAt');
+    await attendance.populate(
+      'qrCode',
+      'code generatedAt expiresAt description course semester subject'
+    );
     await attendance.populate('teacher', 'name');
 
     res.status(201).json({
@@ -91,28 +226,21 @@ router.post('/mark', protect, authorize('student'), async (req, res) => {
 // @access  Private (Teachers only)
 router.get('/daily', protect, authorize('teacher'), async (req, res) => {
   try {
-    const { date = new Date().toISOString().split('T')[0] } = req.query;
-    
-    const attendance = await Attendance.getDailyAttendance(date, req.user._id);
-    const stats = await Attendance.getAttendanceStats(req.user._id, date);
+    const dateStr = req.query.date || new Date().toISOString().split('T')[0];
+    const subject = req.query.subject;
 
-    // Convert stats to object
-    const statsObj = {};
-    stats.forEach(stat => {
-      statsObj[stat._id] = stat.count;
+    const { attendance, stats } = await getAttendanceForTeacherDate({
+      teacherId: req.user._id,
+      dateStr,
+      subject
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: {
-        date,
+        date: dateStr,
         attendance,
-        stats: {
-          present: statsObj.present || 0,
-          late: statsObj.late || 0,
-          absent: statsObj.absent || 0,
-          total: attendance.length
-        }
+        stats
       }
     });
   } catch (error) {
@@ -154,7 +282,7 @@ router.get('/range', protect, authorize('teacher'), async (req, res) => {
 
     const attendance = await Attendance.find(query)
       .populate('student', 'name studentId department year mobileNumber')
-      .populate('qrCode', 'code generatedAt description')
+      .populate('qrCode', 'code generatedAt description course semester subject')
       .sort({ date: -1, markedAt: 1 });
 
     res.json({

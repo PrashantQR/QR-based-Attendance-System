@@ -80,18 +80,19 @@ attendanceSchema.set('toJSON', { virtuals: true });
 
 // Static method to get daily attendance
 attendanceSchema.statics.getDailyAttendance = function(date, teacherId) {
+  // Interpret `YYYY-MM-DD` dates in UTC to avoid timezone shifts.
   const startOfDay = new Date(date);
-  startOfDay.setHours(0, 0, 0, 0);
-  
+  startOfDay.setUTCHours(0, 0, 0, 0);
+
   const endOfDay = new Date(date);
-  endOfDay.setHours(23, 59, 59, 999);
+  endOfDay.setUTCHours(23, 59, 59, 999);
   
   return this.find({
     date: { $gte: startOfDay, $lte: endOfDay },
     teacher: teacherId,
     isDeleted: false
   }).populate('student', 'name studentId department year mobileNumber')
-    .populate('qrCode', 'code generatedAt expiresAt description')
+    .populate('qrCode', 'code generatedAt expiresAt description course semester subject')
     .sort({ markedAt: 1 });
 };
 
@@ -108,11 +109,12 @@ attendanceSchema.statics.getStudentAttendance = function(studentId, startDate, e
 
 // Static method to get attendance statistics
 attendanceSchema.statics.getAttendanceStats = function(teacherId, date) {
+  // Interpret `YYYY-MM-DD` dates in UTC to avoid timezone shifts.
   const startOfDay = new Date(date);
-  startOfDay.setHours(0, 0, 0, 0);
-  
+  startOfDay.setUTCHours(0, 0, 0, 0);
+
   const endOfDay = new Date(date);
-  endOfDay.setHours(23, 59, 59, 999);
+  endOfDay.setUTCHours(23, 59, 59, 999);
   
   // Convert teacherId to ObjectId if it's a string
   const teacherObjectId = typeof teacherId === 'string' ? new mongoose.Types.ObjectId(teacherId) : teacherId;
