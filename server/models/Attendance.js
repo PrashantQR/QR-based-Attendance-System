@@ -18,7 +18,11 @@ const attendanceSchema = new mongoose.Schema({
   },
   date: {
     type: Date,
-    default: Date.now,
+    default: () => {
+      const d = new Date();
+      d.setUTCHours(0, 0, 0, 0);
+      return d;
+    },
     required: true
   },
   status: {

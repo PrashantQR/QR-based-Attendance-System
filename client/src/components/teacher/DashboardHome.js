@@ -59,6 +59,29 @@ const DashboardHome = () => {
         subjectSummary: Array.isArray(data?.subjectSummary) ? data.subjectSummary : [],
         recentActivity: Array.isArray(data?.recentActivity) ? data.recentActivity : []
       });
+
+      // Persist recent activity into localStorage for notifications in navbar
+      try {
+        const notifications = (data?.recentActivity || []).map((record) => ({
+          id: record._id,
+          title: `${record.student?.name || 'Unknown'} ${record.status || ''}`.trim(),
+          description: `${record.qrCode?.subject || 'N/A'} • ${
+            record.qrCode?.course || 'N/A'
+          } ${record.qrCode?.semester || ''}`.trim(),
+          time: record.markedAt
+            ? new Date(record.markedAt).toLocaleTimeString()
+            : new Date().toLocaleTimeString()
+        }));
+
+        if (notifications.length) {
+          localStorage.setItem(
+            'qr_notifications',
+            JSON.stringify(notifications.slice(0, 10))
+          );
+        }
+      } catch {
+        // ignore notification storage errors
+      }
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
       const status = error.response?.status;

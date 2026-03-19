@@ -77,8 +77,8 @@ router.get('/', protect, authorize('teacher'), async (req, res) => {
     const attendanceRecords = await Attendance.find(attendanceFilter)
       .populate('student', 'name')
       .populate('qrCode', 'subject course semester')
-      .sort({ markedAt: -1 })
-      .limit(8);
+      .sort({ createdAt: -1 })
+      .limit(5);
 
     const totalAttendance = await Attendance.countDocuments(attendanceFilter);
     const presentAttendance = await Attendance.countDocuments({
@@ -100,41 +100,16 @@ router.get('/', protect, authorize('teacher'), async (req, res) => {
 
     const qrActive = activeQrCount > 0;
 
-    const qrCollection = QRCodeModel.collection.name;
-    const teacherObjectId =
-      typeof teacherId === 'string'
-        ? new mongoose.Types.ObjectId(teacherId)
-        : teacherId;
-
-    const subjectSummary = await Attendance.aggregate([
-      {
-        $match: {
-          teacher: teacherObjectId,
-          isDeleted: false,
-          date: { $gte: start, $lte: end }
-        }
-      },
-      {
-        $lookup: {
-          from: qrCollection,
-          localField: 'qrCode',
-          foreignField: '_id',
-          as: 'qr'
-        }
-      },
-      { $unwind: '$qr' },
-      {
-        $group: {
-          _id: '$qr.subject',
-          total: { $sum: 1 },
-          present: {
-            $sum: {
-              $cond: [{ $eq: ['$status', 'present'] }, 1, 0]
+    const subjectSummary =
+      totalStudents > 0
+        ? [
+            {
+              _id: subject,
+              total: totalStudents,
+              present: presentAttendance
             }
-          }
-        }
-      }
-    ]);
+          ]
+        : [];
 
     return res.json({
       success: true,

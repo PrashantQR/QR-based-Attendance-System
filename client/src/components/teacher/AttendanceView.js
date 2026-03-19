@@ -7,7 +7,6 @@ import { useAuth } from '../../contexts/AuthContext';
 const AttendanceView = () => {
   const { user } = useAuth();
   const [attendance, setAttendance] = useState([]);
-  const [stats, setStats] = useState({});
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split('T')[0]
   );
@@ -40,7 +39,6 @@ const AttendanceView = () => {
 
       const data = response.data?.data;
       setAttendance(Array.isArray(data?.attendance) ? data.attendance : []);
-      setStats(data?.stats || {});
     } catch (error) {
       console.error('Error fetching attendance:', error);
       toast.error('Failed to fetch attendance data');
@@ -120,10 +118,18 @@ const AttendanceView = () => {
     }
   };
 
-  const attendanceRate =
-    stats.total > 0
-      ? Math.round(((stats.present || 0) / stats.total) * 100)
-      : 0;
+  const attendanceRate = useMemo(() => {
+    if (!courseStudentsTotal) return 0;
+    const presentStudentIds = new Set(
+      attendance
+        .filter((record) => record.status === 'present')
+        .map((record) => String(record.student?._id || record.student))
+    );
+
+    return Math.round(
+      (presentStudentIds.size / Number(courseStudentsTotal || 1)) * 100
+    );
+  }, [attendance, courseStudentsTotal]);
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
 
