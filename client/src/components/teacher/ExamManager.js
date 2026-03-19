@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 
 const ExamManager = () => {
+  const [subjects, setSubjects] = useState([]);
+  const [selectedSubject, setSelectedSubject] = useState('');
+  const [subjectsLoading, setSubjectsLoading] = useState(false);
   const [title, setTitle] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(10);
   const [file, setFile] = useState(null);
@@ -11,16 +14,47 @@ const ExamManager = () => {
   const [loading, setLoading] = useState(false);
   const [qrPayload, setQrPayload] = useState(null);
 
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      setSubjectsLoading(true);
+      try {
+        const res = await api.get('/teacher/subjects');
+        const list = Array.isArray(res.data?.data) ? res.data.data : [];
+        setSubjects(list);
+        if (!selectedSubject && list.length > 0) {
+          setSelectedSubject(String(list[0]._id));
+        }
+      } catch (error) {
+        console.error('Fetch teacher subjects error:', error);
+        toast.error(
+          error.response?.data?.message || 'Failed to fetch subjects'
+        );
+      } finally {
+        setSubjectsLoading(false);
+      }
+    };
+
+    fetchSubjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleImport = async (e) => {
     e.preventDefault();
     if (!file) {
       toast.error('Please select a CSV or Excel file');
       return;
     }
+
+    if (!selectedSubject) {
+      toast.error('Please select a subject');
+      return;
+    }
+
     setLoading(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('subjectId', selectedSubject);
       if (title && !testId) {
         formData.append('title', title);
         formData.append('durationMinutes', String(durationMinutes));
@@ -95,6 +129,26 @@ const ExamManager = () => {
         <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5 space-y-4">
           <h2 className="text-sm font-semibold text-white">1. Import Questions</h2>
           <form onSubmit={handleImport} className="space-y-3">
+            <div className="mb-3">
+              <label className="block text-xs text-gray-400 mb-1">
+                Select Subject
+              </label>
+              <select
+                value={selectedSubject}
+                onChange={(e) => setSelectedSubject(e.target.value)}
+                className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+                disabled={subjectsLoading}
+              >
+                <option value="">
+                  {subjectsLoading ? 'Loading subjects…' : 'Select Subject'}
+                </option>
+                {subjects.map((sub) => (
+                  <option key={String(sub._id)} value={String(sub._id)}>
+                    {sub.name}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div>
               <label className="block text-xs text-gray-400 mb-1">
                 Test Title (for new test)

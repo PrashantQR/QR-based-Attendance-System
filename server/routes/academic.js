@@ -75,6 +75,52 @@ router.post('/subjects', protect, authorize('teacher'), async (req, res) => {
   }
 });
 
+// Get subjects available for this teacher (for subject-wise exam setup)
+// Route: GET /api/teacher/subjects
+router.get(
+  '/teacher/subjects',
+  protect,
+  authorize('teacher'),
+  async (req, res) => {
+    try {
+      const assignedNames = Array.isArray(req.user.subjects)
+        ? req.user.subjects
+        : [];
+
+      if (!assignedNames.length) {
+        return res.json({ success: true, data: [] });
+      }
+
+      // Prefer subjects created by this teacher.
+      let subjects = await Subject.find({
+        createdBy: req.user._id,
+        name: { $in: assignedNames }
+      })
+        .select('_id name course semester')
+        .sort({ name: 1 });
+
+      // Fallback: if the teacher's Subject docs are not found by createdBy,
+      // still return matches by name.
+      if (!subjects.length) {
+        subjects = await Subject.find({
+          name: { $in: assignedNames }
+        })
+          .select('_id name course semester')
+          .sort({ name: 1 });
+      }
+
+      return res.json({ success: true, data: subjects });
+    } catch (error) {
+      console.error('Get teacher subjects error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Server error',
+        data: {}
+      });
+    }
+  }
+);
+
 // Get subjects filtered by course & semester (public)
 router.get('/subjects', async (req, res) => {
   try {

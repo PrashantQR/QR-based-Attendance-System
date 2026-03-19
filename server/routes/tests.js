@@ -77,27 +77,41 @@ router.get(
       const query = role === 'student' ? { status: 'published' } : {};
 
       const tests = await Test.find(query)
-        .select('_id title status qrExpiresAt')
+        .populate('subjectId', 'name')
+        .select('_id title status qrExpiresAt subjectId')
         .sort({ createdAt: -1 });
 
-      const mapped = tests.map((t) => {
-        let effectiveStatus = t.status;
-        // If teacher generated QR and time is over, treat it as completed in the UI
-        if (
-          t.status === 'active' &&
-          t.qrExpiresAt &&
-          t.qrExpiresAt instanceof Date &&
-          t.qrExpiresAt <= now
-        ) {
-          effectiveStatus = 'completed';
-        }
+      // Student should only see published tests for their assigned subjects.
+      const assignedSubjectNames = Array.isArray(req.user?.subjects)
+        ? req.user.subjects
+        : [];
 
-        return {
-          _id: t._id,
-          title: t.title,
-          status: effectiveStatus
-        };
-      });
+      const mapped = tests
+        .filter((t) => {
+          if (role !== 'student') return true;
+          // If subjectId is missing (old tests), still allow visibility.
+          if (!t.subjectId || !t.subjectId.name) return true;
+          return assignedSubjectNames.includes(t.subjectId.name);
+        })
+        .map((t) => {
+          let effectiveStatus = t.status;
+          // If teacher generated QR and time is over, treat it as completed in the UI
+          if (
+            t.status === 'active' &&
+            t.qrExpiresAt &&
+            t.qrExpiresAt instanceof Date &&
+            t.qrExpiresAt <= now
+          ) {
+            effectiveStatus = 'completed';
+          }
+
+          return {
+            _id: t._id,
+            title: t.title,
+            status: effectiveStatus,
+            subjectName: t.subjectId?.name || ''
+          };
+        });
 
       return res.json(mapped);
     } catch (error) {
@@ -117,12 +131,21 @@ router.post(
   authorize('teacher'),
   async (req, res) => {
     try {
-      const { title, description, durationMinutes, questions } = req.body || {};
+      const { title, description, durationMinutes, questions, subjectId } =
+        req.body || {};
 
       if (!title || !Array.isArray(questions) || questions.length === 0) {
         return res.status(400).json({
           success: false,
           message: 'Title and at least one question are required',
+          data: {}
+        });
+      }
+
+      if (!subjectId) {
+        return res.status(400).json({
+          success: false,
+          message: 'subjectId is required',
           data: {}
         });
       }
@@ -144,6 +167,7 @@ router.post(
       const test = await Test.create({
         title: String(title).trim(),
         description: description ? String(description).trim() : '',
+        subjectId,
         createdBy: req.user._id,
         durationMinutes: Number(durationMinutes || 10),
         questions: normalized,
@@ -184,12 +208,22 @@ router.post(
         });
       }
 
-      const { title, description, durationMinutes, testId } = req.body || {};
+      const { title, description, durationMinutes, testId, subjectId } =
+        req.body || {};
 
       if (!title && !testId) {
         return res.status(400).json({
           success: false,
           message: 'Either title (for new test) or testId (for existing) is required',
+          data: {}
+        });
+      }
+
+      // Subject is mandatory for subject-wise exam setup.
+      if (!testId && !subjectId) {
+        return res.status(400).json({
+          success: false,
+          message: 'subjectId is required for creating a new test',
           data: {}
         });
       }
@@ -240,13 +274,33 @@ router.post(
         test = await Test.findOne({
           _id: testId,
           createdBy: req.user._id
-        }).select('+questions.correctAnswer');
+        })
+          .select('+questions.correctAnswer subjectId');
         if (!test) {
           return res.status(404).json({
             success: false,
             message: 'Test not found',
             data: {}
           });
+        }
+
+        // Enforce that appended questions go to the same subject.
+        if (subjectId) {
+          if (
+            test.subjectId &&
+            String(test.subjectId) !== String(subjectId)
+          ) {
+            return res.status(400).json({
+              success: false,
+              message:
+                'Selected subject does not match the existing test subject',
+              data: {}
+            });
+          }
+
+          if (!test.subjectId) {
+            test.subjectId = subjectId;
+          }
         }
         test.questions.push(...valid);
         await test.save();
@@ -256,6 +310,7 @@ router.post(
           description: description ? String(description).trim() : '',
           createdBy: req.user._id,
           durationMinutes: Number(durationMinutes || 10),
+          subjectId,
           questions: valid,
           status: 'draft'
         });

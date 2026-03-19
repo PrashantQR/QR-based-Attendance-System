@@ -145,7 +145,9 @@ router.get(
     try {
       const { testId } = req.params;
 
-      const test = await Test.findById(testId).select('title status questions');
+      const test = await Test.findById(testId)
+        .populate('subjectId', 'name')
+        .select('title status questions subjectId');
 
       if (!test) {
         return res.status(404).json({
@@ -188,6 +190,7 @@ router.get(
         data: {
           testId: test._id,
           testTitle: test.title,
+          subjectName: test.subjectId?.name || '',
           totalQuestions,
           students
         }
@@ -212,7 +215,9 @@ router.get(
     try {
       const { testId } = req.params;
 
-      const test = await Test.findById(testId).select('title status questions');
+      const test = await Test.findById(testId)
+        .populate('subjectId', 'name')
+        .select('title status questions subjectId');
       if (!test) {
         return res.status(404).json({ success: false, message: 'Test not found', data: {} });
       }
@@ -245,6 +250,7 @@ router.get(
         data: {
           testId: test._id,
           testTitle: test.title,
+          subjectName: test.subjectId?.name || '',
           totalQuestions,
           studentName: req.user.name,
           score: Number(attempt.score || 0),

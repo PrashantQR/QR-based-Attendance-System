@@ -22,6 +22,11 @@ const testSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
     description: { type: String, trim: true },
+    // Subject-wise exams: teacher links each test to a Subject document.
+    subjectId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Subject'
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

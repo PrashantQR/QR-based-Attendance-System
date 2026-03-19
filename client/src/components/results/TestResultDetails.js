@@ -116,6 +116,9 @@ const TestResultDetails = () => {
               {data.testTitle || 'Test Results'}
             </h2>
             <p className="text-sm text-gray-400">Test ID: {data.testId || testId}</p>
+            {data.subjectName ? (
+              <p className="text-sm text-gray-400">Subject: {data.subjectName}</p>
+            ) : null}
           </div>
           <button
             type="button"
@@ -196,6 +199,9 @@ const TestResultDetails = () => {
             {data.testTitle || 'Test Results'}
           </h2>
           <p className="text-sm text-gray-400">Test ID: {data.testId || testId}</p>
+          {data.subjectName ? (
+            <p className="text-sm text-gray-400">Subject: {data.subjectName}</p>
+          ) : null}
         </div>
         <button
           type="button"

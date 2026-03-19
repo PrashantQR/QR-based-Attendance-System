@@ -96,6 +96,7 @@ const TeacherResults = () => {
               <thead>
                 <tr className="text-left text-xs text-gray-400">
                   <th className="py-2 px-3 font-semibold">Test Name</th>
+                  <th className="py-2 px-3 font-semibold">Subject</th>
                   <th className="py-2 px-3 font-semibold">Test ID</th>
                   <th className="py-2 px-3 font-semibold">Status</th>
                   <th className="py-2 px-3 font-semibold">Action</th>
@@ -105,6 +106,9 @@ const TeacherResults = () => {
                 {tests.map((test) => (
                   <tr key={String(test._id)} className="border-t border-white/5">
                     <td className="py-3 px-3 text-gray-200">{test.title || 'Untitled Test'}</td>
+                    <td className="py-3 px-3 text-gray-400">
+                      {test.subjectName || '—'}
+                    </td>
                     <td className="py-3 px-3 text-gray-400 break-all">
                       {String(test._id)}
                     </td>

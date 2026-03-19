@@ -21,9 +21,9 @@ router.post(
         });
       }
 
-      const test = await Test.findById(testId).select(
-        '+questions.correctAnswer'
-      );
+      const test = await Test.findById(testId)
+        .populate('subjectId', 'name')
+        .select('+questions.correctAnswer');
 
       if (!test) {
         return res.status(404).json({
@@ -54,6 +54,20 @@ router.post(
           message: 'Test is not active',
           data: {}
         });
+      }
+
+      // Subject-wise protection: students can only start exams for their subjects.
+      if (test.subjectId && test.subjectId.name) {
+        const allowed = Array.isArray(req.user.subjects)
+          ? req.user.subjects.includes(test.subjectId.name)
+          : false;
+        if (!allowed) {
+          return res.status(403).json({
+            success: false,
+            message: 'You are not allowed to start this test for your subjects',
+            data: {}
+          });
+        }
       }
 
       const existing = await TestAttempt.findOne({
