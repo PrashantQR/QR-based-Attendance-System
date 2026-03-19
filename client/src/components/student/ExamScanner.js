@@ -10,6 +10,7 @@ const ExamScanner = () => {
   const [scanning, setScanning] = useState(true);
   const [initializing, setInitializing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [blockedMessage, setBlockedMessage] = useState('');
   const scannerRef = useRef(null);
   const isStartingRef = useRef(false);
   const scannedRef = useRef(false);
@@ -79,6 +80,16 @@ const ExamScanner = () => {
       console.error('Exam start via QR error:', error);
       const message = error.response?.data?.message || 'Failed to start exam';
       toast.error(message);
+      const isTestNotActive = typeof message === 'string' && /not active/i.test(message);
+      if (isTestNotActive) {
+        // Prevent continuous toasts: keep the scanner stopped until teacher activates the test.
+        setBlockedMessage(message);
+        setScanning(false);
+        await stopCurrentScanner();
+        return;
+      }
+
+      setBlockedMessage('');
       scannedRef.current = false;
       setScanning(true);
     } finally {
@@ -141,6 +152,8 @@ const ExamScanner = () => {
     if (isStartingRef.current) return;
     isStartingRef.current = true;
     setInitializing(true);
+    setBlockedMessage('');
+    scannedRef.current = false;
     setScanning(true);
 
     try {
@@ -184,7 +197,11 @@ const ExamScanner = () => {
           {!scanning && (
             <div className="text-center">
               <FaQrcode size={72} className="text-gray-500 mx-auto mb-3" />
-              <p className="text-sm text-gray-400 mb-4">Click below to start scanning</p>
+              <p className="text-sm text-gray-400 mb-4">
+                {blockedMessage
+                  ? blockedMessage
+                  : 'Click below to start scanning'}
+              </p>
               <button
                 type="button"
                 onClick={startScanner}

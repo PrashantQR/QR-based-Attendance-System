@@ -221,7 +221,7 @@ const ExamManager = () => {
                   <div className="inline-block bg-white p-3 rounded-xl shadow-lg">
                     <QRCodeCanvas
                       value={JSON.stringify(qrPayload)}
-                      size={260}
+                      size={320}
                       level="H"
                       includeMargin
                     />
