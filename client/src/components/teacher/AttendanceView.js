@@ -447,9 +447,12 @@ const AttendanceView = () => {
             </table>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-8 text-gray-400 text-sm">
+          <div className="flex flex-col items-center justify-center py-8 text-gray-400 text-sm text-center">
             <FaCalendarAlt size={40} className="mb-3 text-gray-500" />
-            <p>No records found for selected filters</p>
+            <p>No session conducted or no attendance records found</p>
+            <p className="mt-1 text-xs text-gray-500">
+              Check the selected date and subject above.
+            </p>
           </div>
         )}
 
