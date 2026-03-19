@@ -1,6 +1,6 @@
 const express = require('express');
 const multer = require('multer');
-const csvParse = require('csv-parse');
+const { parse: csvParse } = require('csv-parse');
 const xlsx = require('xlsx');
 const { protect, authorize } = require('../middleware/auth');
 const Test = require('../models/Test');
