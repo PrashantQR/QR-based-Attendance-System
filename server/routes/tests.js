@@ -61,6 +61,30 @@ const mapQuestionRow = (row) => {
   };
 };
 
+// GET /api/tests - list tests for results UI
+// Returns: [{ _id, title }]
+router.get(
+  '/',
+  protect,
+  authorize('teacher', 'student'),
+  async (req, res) => {
+    try {
+      const tests = await Test.find()
+        .select('_id title')
+        .sort({ createdAt: -1 });
+
+      return res.json(tests);
+    } catch (error) {
+      console.error('Get tests error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'An error occurred while fetching tests',
+        data: {}
+      });
+    }
+  }
+);
+
 router.post(
   '/',
   protect,

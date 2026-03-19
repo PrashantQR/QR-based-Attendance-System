@@ -145,10 +145,7 @@ router.get(
     try {
       const { testId } = req.params;
 
-      const test = await Test.findOne({
-        _id: testId,
-        createdBy: req.user._id
-      }).select('title status questions');
+      const test = await Test.findById(testId).select('title status questions');
 
       if (!test) {
         return res.status(404).json({
@@ -197,6 +194,67 @@ router.get(
       });
     } catch (error) {
       console.error('Teacher test results fetch error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'An error occurred while fetching test results',
+        data: {}
+      });
+    }
+  }
+);
+
+// Student: detailed list of the student's own attempt for a published test
+router.get(
+  '/student/test/:testId',
+  protect,
+  authorize('student'),
+  async (req, res) => {
+    try {
+      const { testId } = req.params;
+
+      const test = await Test.findById(testId).select('title status questions');
+      if (!test) {
+        return res.status(404).json({ success: false, message: 'Test not found', data: {} });
+      }
+
+      if (test.status !== 'published') {
+        return res.json({ success: false, message: 'Result not declared', data: {} });
+      }
+
+      const attempt = await TestAttempt.findOne({
+        test: test._id,
+        student: req.user._id
+      });
+
+      if (!attempt) {
+        return res.status(404).json({
+          success: false,
+          message: 'No attempt found for this test',
+          data: {}
+        });
+      }
+
+      const totalQuestions = Array.isArray(test.questions) ? test.questions.length : 0;
+      const pass =
+        typeof attempt.pass === 'boolean'
+          ? attempt.pass
+          : formatPercentageStatus(attempt.percentage);
+
+      return res.json({
+        success: true,
+        data: {
+          testId: test._id,
+          testTitle: test.title,
+          totalQuestions,
+          studentName: req.user.name,
+          score: Number(attempt.score || 0),
+          percentage: Number(attempt.percentage || 0),
+          pass,
+          submittedAt: attempt.submittedAt || attempt.createdAt
+        }
+      });
+    } catch (error) {
+      console.error('Student test result fetch error:', error);
       return res.status(500).json({
         success: false,
         message: 'An error occurred while fetching test results',

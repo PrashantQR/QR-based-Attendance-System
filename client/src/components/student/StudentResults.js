@@ -1,32 +1,32 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 
 const StudentResults = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [results, setResults] = useState([]);
-  const [emptyMessage, setEmptyMessage] = useState('');
+  const [tests, setTests] = useState([]);
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    const fetchResults = async () => {
+    const fetchTests = async () => {
       setLoading(true);
       try {
-        const res = await api.get('/results/student');
-        const data = res.data?.data;
-        const list = Array.isArray(data) ? data : [];
-        setResults(list);
-        setEmptyMessage(res.data?.message || '');
+        const res = await api.get('/tests');
+        const list = Array.isArray(res.data) ? res.data : [];
+        setTests(list);
       } catch (error) {
-        console.error('Student results fetch error:', error);
-        toast.error(
-          error.response?.data?.message || 'Failed to fetch results'
-        );
+        console.error('Fetch tests error:', error);
+        const msg = error.response?.data?.message || 'Failed to fetch tests';
+        setErrorMessage(msg);
+        toast.error(msg);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchResults();
+    fetchTests();
   }, []);
 
   if (loading) {
@@ -44,19 +44,15 @@ const StudentResults = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl md:text-3xl font-semibold text-white">
-            Results
-          </h2>
-          <p className="text-sm text-gray-400">
-            Your published exam scores
-          </p>
+          <h2 className="text-2xl md:text-3xl font-semibold text-white">Results</h2>
+          <p className="text-sm text-gray-400">Select a test to view your result</p>
         </div>
       </div>
 
-      {results.length === 0 ? (
+      {tests.length === 0 ? (
         <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
           <p className="text-sm text-amber-300">
-            {emptyMessage || 'No results found yet. Teachers publish results after exams.'}
+            {errorMessage || 'No tests found.'}
           </p>
         </div>
       ) : (
@@ -65,51 +61,29 @@ const StudentResults = () => {
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-gray-400">
-                  <th className="py-2 px-3 font-semibold">Test</th>
-                  <th className="py-2 px-3 font-semibold">Date</th>
-                  <th className="py-2 px-3 font-semibold">Score</th>
-                  <th className="py-2 px-3 font-semibold">Percentage</th>
-                  <th className="py-2 px-3 font-semibold">Status</th>
+                  <th className="py-2 px-3 font-semibold">Test Name</th>
+                  <th className="py-2 px-3 font-semibold">Test ID</th>
+                  <th className="py-2 px-3 font-semibold">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {results.map((r) => {
-                  const pass = Boolean(r.pass);
-                  return (
-                    <tr
-                      key={String(r.testId)}
-                      className="border-t border-white/5"
-                    >
-                      <td className="py-3 px-3 text-gray-200">
-                        {r.testTitle || 'Untitled Test'}
-                      </td>
-                      <td className="py-3 px-3 text-gray-400">
-                        {r.submittedAt
-                          ? new Date(r.submittedAt).toLocaleDateString()
-                          : '—'}
-                      </td>
-                      <td className="py-3 px-3 text-gray-200">
-                        {r.totalQuestions > 0
-                          ? `${r.score}/${r.totalQuestions}`
-                          : `${r.score}`}
-                      </td>
-                      <td className="py-3 px-3 text-gray-200">
-                        {r.percentage}%
-                      </td>
-                      <td className="py-3 px-3">
-                        <span
-                          className={`inline-flex items-center rounded-lg px-2 py-1 text-xs font-semibold ${
-                            pass
-                              ? 'bg-emerald-400/10 text-emerald-300'
-                              : 'bg-rose-400/10 text-rose-300'
-                          }`}
-                        >
-                          {pass ? 'PASS' : 'FAIL'}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {tests.map((test) => (
+                  <tr key={String(test._id)} className="border-t border-white/5">
+                    <td className="py-3 px-3 text-gray-200">{test.title || 'Untitled Test'}</td>
+                    <td className="py-3 px-3 text-gray-400 break-all">
+                      {String(test._id)}
+                    </td>
+                    <td className="py-3 px-3">
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/student/results/${test._id}`)}
+                        className="px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-200 hover:bg-white/10"
+                      >
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

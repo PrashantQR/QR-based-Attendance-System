@@ -8,6 +8,7 @@ import EvaluationDashboard from './EvaluationDashboard';
 import StudentList from './StudentList';
 import ExamManager from './ExamManager';
 import TeacherResults from './TeacherResults';
+import TestResultDetails from '../results/TestResultDetails';
 
 const TeacherDashboard = () => {
   return (
@@ -20,6 +21,7 @@ const TeacherDashboard = () => {
         <Route path="/students" element={<StudentList />} />
         <Route path="/exams" element={<ExamManager />} />
         <Route path="/results" element={<TeacherResults />} />
+        <Route path="/results/:testId" element={<TestResultDetails />} />
       </Routes>
     </MainLayout>
   );
