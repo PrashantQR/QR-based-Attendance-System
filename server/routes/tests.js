@@ -62,18 +62,44 @@ const mapQuestionRow = (row) => {
 };
 
 // GET /api/tests - list tests for results UI
-// Returns: [{ _id, title }]
+// Teacher: returns all tests with effective status (active -> completed when QR expires)
+// Student: returns only published tests
+// Returns: [{ _id, title, status }]
 router.get(
   '/',
   protect,
   authorize('teacher', 'student'),
   async (req, res) => {
     try {
-      const tests = await Test.find()
-        .select('_id title')
+      const now = new Date();
+      const role = req.user?.role;
+
+      const query = role === 'student' ? { status: 'published' } : {};
+
+      const tests = await Test.find(query)
+        .select('_id title status qrExpiresAt')
         .sort({ createdAt: -1 });
 
-      return res.json(tests);
+      const mapped = tests.map((t) => {
+        let effectiveStatus = t.status;
+        // If teacher generated QR and time is over, treat it as completed in the UI
+        if (
+          t.status === 'active' &&
+          t.qrExpiresAt &&
+          t.qrExpiresAt instanceof Date &&
+          t.qrExpiresAt <= now
+        ) {
+          effectiveStatus = 'completed';
+        }
+
+        return {
+          _id: t._id,
+          title: t.title,
+          status: effectiveStatus
+        };
+      });
+
+      return res.json(mapped);
     } catch (error) {
       console.error('Get tests error:', error);
       return res.status(500).json({
@@ -307,6 +333,27 @@ router.post(
           data: {}
         });
       }
+      // Publishing is allowed only after completion.
+      // We consider a test completed when its QR expiry time has passed.
+      if (test.status !== 'completed') {
+        const now = new Date();
+        const qrExpired =
+          test.qrExpiresAt &&
+          test.qrExpiresAt instanceof Date &&
+          test.qrExpiresAt <= now;
+
+        if (test.status === 'active' && qrExpired) {
+          test.status = 'completed';
+        } else {
+          return res.status(400).json({
+            success: false,
+            message:
+              'Test results cannot be published until the test is completed',
+            data: {}
+          });
+        }
+      }
+
       test.status = 'published';
       await test.save();
       return res.json({

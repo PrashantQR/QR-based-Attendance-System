@@ -82,30 +82,12 @@ const ExamManager = () => {
     }
   };
 
-  const handlePublish = async () => {
-    if (!testId) {
-      toast.error('Test ID is required to publish results');
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await api.post(`/tests/${testId}/publish`);
-      toast.success(res.data?.message || 'Results published');
-    } catch (error) {
-      console.error('Publish exam error:', error);
-      const message = error.response?.data?.message || 'Failed to publish results';
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl md:text-3xl font-semibold text-white">Exam Manager</h1>
         <p className="text-sm text-gray-400">
-          Import questions from CSV/Excel, generate exam QR, and publish results.
+          Import questions from CSV/Excel, activate tests, and generate exam QR.
         </p>
       </div>
 
@@ -174,7 +156,7 @@ const ExamManager = () => {
         <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5 space-y-4">
           <h2 className="text-sm font-semibold text-white">2. Activate, QR & Results</h2>
           <p className="text-xs text-gray-400 mb-2">
-            Activate the test so students can start via QR. Then generate a time-limited exam QR. Publish results when the exam is over.
+            Activate the test so students can start via QR. Then generate a time-limited exam QR.
           </p>
           <div className="space-y-3">
             <div>
@@ -205,14 +187,6 @@ const ExamManager = () => {
                 className="flex-1 border border-emerald-500 text-emerald-400 hover:bg-emerald-500/10 rounded-lg py-2 text-sm font-medium"
               >
                 Generate Exam QR
-              </button>
-              <button
-                type="button"
-                disabled={loading}
-                onClick={handlePublish}
-                className="flex-1 border border-sky-500 text-sky-400 hover:bg-sky-500/10 rounded-lg py-2 text-sm font-medium"
-              >
-                Publish Results
               </button>
             </div>
             {qrPayload && (

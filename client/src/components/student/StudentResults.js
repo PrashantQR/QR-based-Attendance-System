@@ -63,6 +63,7 @@ const StudentResults = () => {
                 <tr className="text-left text-xs text-gray-400">
                   <th className="py-2 px-3 font-semibold">Test Name</th>
                   <th className="py-2 px-3 font-semibold">Test ID</th>
+                  <th className="py-2 px-3 font-semibold">Status</th>
                   <th className="py-2 px-3 font-semibold">Action</th>
                 </tr>
               </thead>
@@ -72,6 +73,11 @@ const StudentResults = () => {
                     <td className="py-3 px-3 text-gray-200">{test.title || 'Untitled Test'}</td>
                     <td className="py-3 px-3 text-gray-400 break-all">
                       {String(test._id)}
+                    </td>
+                    <td className="py-3 px-3">
+                      <span className="inline-flex items-center rounded-lg px-2 py-1 text-xs font-semibold bg-emerald-400/10 text-emerald-300">
+                        {test.status || 'published'}
+                      </span>
                     </td>
                     <td className="py-3 px-3">
                       <button
