@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
 import { motion } from 'framer-motion';
@@ -6,7 +7,17 @@ import EvaluateInstructor from './EvaluateInstructor';
 
 const DashboardHome = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [showEvaluation, setShowEvaluation] = useState(false);
+  const [lastExamTestId, setLastExamTestId] = useState('');
+  useEffect(() => {
+    try {
+      const id = localStorage.getItem('last_exam_test_id');
+      setLastExamTestId(id ? String(id) : '');
+    } catch (_) {
+      setLastExamTestId('');
+    }
+  }, []);
   const [stats, setStats] = useState({
     totalAttendance: 0,
     presentDays: 0,
@@ -108,6 +119,22 @@ const DashboardHome = () => {
         <h2 className="text-2xl md:text-3xl font-semibold text-white">Student Dashboard</h2>
         <p className="text-sm text-gray-400">Welcome back, {user?.name}!</p>
       </div>
+
+      {lastExamTestId && (
+        <motion.section
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-secondary/80 border border-white/5 rounded-2.5xl p-4 shadow-soft-glass"
+        >
+          <button
+            type="button"
+            onClick={() => navigate(`/student/exam/result/${lastExamTestId}`)}
+            className="text-sm font-medium text-emerald-400 hover:text-emerald-300 underline"
+          >
+            View last exam result
+          </button>
+        </motion.section>
+      )}
 
       {/* Subject-wise Attendance */}
       <motion.section

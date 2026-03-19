@@ -25,6 +25,8 @@ const evaluationsStatsRoutes = require('./routes/evaluationsStats');
 const studentsRoutes = require('./routes/students');
 const dashboardRoutes = require('./routes/dashboard');
 const academicRoutes = require('./routes/academic');
+const testsRoutes = require('./routes/tests');
+const examRoutes = require('./routes/exam');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -142,6 +144,8 @@ app.use('/api/evaluations', evaluationsStatsRoutes);
 app.use('/api/students', studentsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api', academicRoutes);
+app.use('/api/tests', testsRoutes);
+app.use('/api/exam', examRoutes);
 
 // Serve React client in production
 if (process.env.NODE_ENV === 'production') {

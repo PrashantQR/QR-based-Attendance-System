@@ -6,6 +6,7 @@ import QRGenerator from './QRGenerator';
 import AttendanceView from './AttendanceView';
 import EvaluationDashboard from './EvaluationDashboard';
 import StudentList from './StudentList';
+import ExamManager from './ExamManager';
 
 const TeacherDashboard = () => {
   return (
@@ -16,6 +17,7 @@ const TeacherDashboard = () => {
         <Route path="/attendance" element={<AttendanceView />} />
         <Route path="/evaluation" element={<EvaluationDashboard />} />
         <Route path="/students" element={<StudentList />} />
+        <Route path="/exams" element={<ExamManager />} />
       </Routes>
     </MainLayout>
   );

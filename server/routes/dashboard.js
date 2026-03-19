@@ -59,14 +59,15 @@ router.get('/', protect, authorize('teacher'), async (req, res) => {
 
     const totalStudents = await User.countDocuments(studentFilter);
 
+    const { start, end } = getUtcDateRange(date);
     const qrFilter = {
       generatedBy: teacherId,
-      subject
+      subject,
+      generatedAt: { $gte: start, $lte: end }
     };
     const qrDocs = await QRCodeModel.find(qrFilter).select('_id');
     const qrIds = qrDocs.map((q) => q._id);
 
-    const { start, end } = getUtcDateRange(date);
     const attendanceFilter = {
       teacher: teacherId,
       isDeleted: false,
@@ -80,18 +81,27 @@ router.get('/', protect, authorize('teacher'), async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(5);
 
-    const totalAttendance = await Attendance.countDocuments(attendanceFilter);
-    const presentAttendance = await Attendance.countDocuments({
-      ...attendanceFilter,
-      status: 'present'
-    });
+    const totalSessions = qrDocs.length;
+
+    const totalAttendance = totalSessions
+      ? await Attendance.countDocuments(attendanceFilter)
+      : 0;
+
+    const presentAttendance =
+      totalSessions && totalStudents
+        ? await Attendance.countDocuments({
+            ...attendanceFilter,
+            status: 'present'
+          })
+        : 0;
+
     const absentCount =
-      totalStudents > presentAttendance
+      totalSessions && totalStudents && presentAttendance < totalStudents
         ? totalStudents - presentAttendance
         : 0;
 
     const attendancePercentage =
-      totalStudents > 0
+      totalSessions && totalStudents
         ? Math.round((presentAttendance / totalStudents) * 100)
         : 0;
 
@@ -121,6 +131,7 @@ router.get('/', protect, authorize('teacher'), async (req, res) => {
       data: {
         date,
         subject,
+        totalSessions,
         totalStudents,
         totalAttendance,
         presentCount: presentAttendance,

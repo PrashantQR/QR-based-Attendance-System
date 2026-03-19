@@ -10,15 +10,17 @@ const Sidebar = ({ isOpen = false, onClose }) => {
   const studentMenu = [
     { to: '/student', label: 'Dashboard', icon: FaTachometerAlt },
     { to: '/student/scan', label: 'Scan QR', icon: FaQrcode },
+    { to: '/student/exam/scan', label: 'Exam', icon: FaClipboardList },
     { to: '/student/my-attendance', label: 'My Attendance', icon: FaHistory },
     { to: '/profile', label: 'Profile', icon: FaUser }
   ];
 
   // Teacher sidebar
   const teacherMenu = [
-    { to: '/teacher', label: 'Dashboard', icon: FaTachometerAlt },
+    { to: '/teacher/dashboard', label: 'Dashboard', icon: FaTachometerAlt },
     { to: '/teacher/qr-generate', label: 'Generate QR', icon: FaQrcode },
     { to: '/teacher/attendance', label: 'View Attendance', icon: FaClipboardList },
+    { to: '/teacher/exams', label: 'Exams', icon: FaClipboardList },
     { to: '/profile', label: 'Profile', icon: FaUser }
   ];
 

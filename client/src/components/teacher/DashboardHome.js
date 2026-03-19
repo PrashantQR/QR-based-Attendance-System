@@ -15,6 +15,7 @@ const DashboardHome = () => {
   const { isAuthenticated, loading: authLoading, user, logout } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState({
+    totalSessions: 0,
     totalStudents: 0,
     totalAttendance: 0,
     presentCount: 0,
@@ -54,6 +55,7 @@ const DashboardHome = () => {
       const data = res.data?.data;
 
       setStats({
+        totalSessions: Number(data?.totalSessions || 0),
         totalStudents: Number(data?.totalStudents || 0),
         totalAttendance: Number(data?.totalAttendance || 0),
         presentCount: Number(data?.presentCount || 0),
@@ -271,9 +273,11 @@ const DashboardHome = () => {
     );
   }
 
+  const totalSessions = stats.totalSessions;
   const totalStudents = stats.totalStudents;
-  const presentCount = stats.presentCount;
-  const absentCount = stats.absentCount;
+  const hasSessions = totalSessions > 0;
+  const presentCount = hasSessions ? stats.presentCount : '—';
+  const absentCount = hasSessions ? stats.absentCount : '—';
   const activeQR = stats.qrActive ? 'Active' : 'Inactive';
   const activeQrSubtext = `${stats.activeQrCount || 0} active`;
   const latestFeedbacks = feedbacks.slice(0, 5);
@@ -346,7 +350,11 @@ const DashboardHome = () => {
       </div>
 
       {/* Top summary cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-4">
+        <SummaryCard
+          title="Total Sessions"
+          value={totalSessions}
+        />
         <SummaryCard
           title="Total Students"
           value={totalStudents}
@@ -372,9 +380,17 @@ const DashboardHome = () => {
         />
         <SummaryCard
           title="Attendance %"
-          value={`${stats.attendancePercentage || 0}%`}
+          value={
+            hasSessions ? `${stats.attendancePercentage || 0}%` : '—'
+          }
         />
       </div>
+
+      {!hasSessions && selectedSubject && (
+        <p className="text-sm text-amber-300">
+          No session conducted for the selected date and subject.
+        </p>
+      )}
 
       {/* Subject summary */}
       <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
