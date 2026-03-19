@@ -1,0 +1,36 @@
+Project Rules for QR Attendance System
+
+This application supports both Web and Android APK.
+
+Architecture Rules:
+- Backend (Node.js + Express) must handle all business logic
+- Frontend (React Web / Mobile) should only handle UI
+- All features must be API-based and reusable
+
+API Rules:
+- Use common APIs for both web and mobile
+- Response format:
+  { success: true, message: "", data: {} }
+
+Features:
+- QR code must be time-based (expiry required)
+- Prevent multiple attendance submissions
+- Validate student location (latitude, longitude)
+- Attendance marking must be backend-controlled
+
+Code Rules:
+- Do not write logic only for web (avoid window/document in logic)
+- Keep reusable functions
+- Follow clean folder structure:
+  /client
+  /server
+  /mobile (future)
+
+UI Rules:
+- Dashboard = summary only
+- View Attendance = detailed data
+- Avoid duplicate content across pages
+
+Performance:
+- Optimize for mobile responsiveness
+- Avoid heavy UI components for APK

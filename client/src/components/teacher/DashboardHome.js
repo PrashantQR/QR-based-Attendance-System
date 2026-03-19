@@ -15,12 +15,22 @@ const DashboardHome = () => {
   const { isAuthenticated, loading: authLoading, user, logout } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState({
-    todayAttendance: 0,
-    activeQRCodes: 0,
     totalStudents: 0,
+    totalAttendance: 0,
+    attendancePercentage: 0,
+    qrActive: false,
+    activeQrCount: 0,
+    subjectSummary: [],
     recentActivity: []
   });
   const [loading, setLoading] = useState(true);
+  const [selectedSubject, setSelectedSubject] = useState('');
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split('T')[0]
+  );
+  const [showStudents, setShowStudents] = useState(false);
+  const [studentsLoading, setStudentsLoading] = useState(false);
+  const [students, setStudents] = useState([]);
   const [feedbacks, setFeedbacks] = useState([]);
   const [overallRating, setOverallRating] = useState(0);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
@@ -28,23 +38,26 @@ const DashboardHome = () => {
   const [evaluationStatsLoading, setEvaluationStatsLoading] = useState(false);
 
   const fetchDashboardStats = useCallback(async () => {
+    if (!selectedSubject) {
+      setLoading(false);
+      return;
+    }
     try {
-      const today = new Date().toISOString().split('T')[0];
-
-      const attendanceResponse = await api.get(`/attendance/daily?date=${today}`);
-      const attendanceData = attendanceResponse.data.data;
-
-      const qrResponse = await api.get('/qr/active');
-      const activeQRCodes = qrResponse.data.count;
-
-      const studentsResponse = await api.get('/auth/students');
-      const totalStudents = studentsResponse.data.count;
+      const query = new URLSearchParams({
+        subject: selectedSubject,
+        date: selectedDate
+      }).toString();
+      const res = await api.get(`/dashboard?${query}`);
+      const data = res.data?.data;
 
       setStats({
-        todayAttendance: attendanceData.stats.total,
-        activeQRCodes,
-        totalStudents,
-        recentActivity: attendanceData.attendance.slice(0, 8)
+        totalStudents: Number(data?.totalStudents || 0),
+        totalAttendance: Number(data?.totalAttendance || 0),
+        attendancePercentage: Number(data?.attendancePercentage || 0),
+        qrActive: Boolean(data?.qrActive),
+        activeQrCount: Number(data?.activeQrCount || 0),
+        subjectSummary: Array.isArray(data?.subjectSummary) ? data.subjectSummary : [],
+        recentActivity: Array.isArray(data?.recentActivity) ? data.recentActivity : []
       });
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
@@ -56,7 +69,27 @@ const DashboardHome = () => {
     } finally {
       setLoading(false);
     }
-  }, [logout, navigate]);
+  }, [logout, navigate, selectedDate, selectedSubject]);
+
+  const fetchStudentsBySubject = useCallback(async () => {
+    if (!selectedSubject || !user?._id) return;
+    setStudentsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        teacherId: String(user._id),
+        subject: selectedSubject
+      });
+      if (user?.course) params.append('course', user.course);
+      if (user?.semester) params.append('semester', user.semester);
+      const res = await api.get(`/students?${params.toString()}`);
+      setStudents(Array.isArray(res.data?.data) ? res.data.data : []);
+    } catch (error) {
+      console.error('Error fetching students list:', error);
+      setStudents([]);
+    } finally {
+      setStudentsLoading(false);
+    }
+  }, [selectedSubject, user?._id, user?.course, user?.semester]);
 
   const fetchFeedback = useCallback(async () => {
     if (!user?._id) return;
@@ -97,6 +130,13 @@ const DashboardHome = () => {
   }, []);
 
   useEffect(() => {
+    if (user?.role === 'teacher' && !selectedSubject) {
+      const firstSubject = Array.isArray(user?.subjects) ? user.subjects[0] : '';
+      if (firstSubject) setSelectedSubject(firstSubject);
+    }
+  }, [user, selectedSubject]);
+
+  useEffect(() => {
     if (!authLoading && isAuthenticated && user?.role === 'teacher') {
       fetchDashboardStats();
       fetchFeedback();
@@ -111,27 +151,27 @@ const DashboardHome = () => {
     fetchEvaluationStats
   ]);
 
-  const attendanceRate = useMemo(() => {
-    if (!stats.totalStudents) return 0;
-    return Math.round((stats.todayAttendance / stats.totalStudents) * 100);
-  }, [stats.todayAttendance, stats.totalStudents]);
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user?.role === 'teacher' && selectedSubject) {
+      const interval = setInterval(() => {
+        fetchDashboardStats();
+      }, 30000);
+      return () => clearInterval(interval);
+    }
+    return undefined;
+  }, [authLoading, isAuthenticated, user, selectedSubject, fetchDashboardStats]);
 
   const subjectCards = useMemo(() => {
-    const summary = stats.recentActivity.reduce((acc, record) => {
-      const subject = record.qrCode?.subject || 'N/A';
-      if (!acc[subject]) {
-        acc[subject] = { total: 0, present: 0 };
-      }
-      acc[subject].total += 1;
-      if (record.status === 'present') acc[subject].present += 1;
-      return acc;
-    }, {});
-
-    return Object.entries(summary).map(([name, s]) => ({
-      name,
-      percentage: s.total > 0 ? Math.round((s.present / s.total) * 100) : 0
+    return (stats.subjectSummary || []).map((s) => ({
+      name: s._id || 'N/A',
+      total: Number(s.total || 0),
+      present: Number(s.present || 0),
+      percentage:
+        Number(s.total || 0) > 0
+          ? Math.round((Number(s.present || 0) / Number(s.total || 1)) * 100)
+          : 0
     }));
-  }, [stats.recentActivity]);
+  }, [stats.subjectSummary]);
 
   const activities = useMemo(
     () =>
@@ -159,8 +199,9 @@ const DashboardHome = () => {
   }
 
   const totalStudents = stats.totalStudents;
-  const todayCount = stats.todayAttendance;
-  const activeQR = stats.activeQRCodes;
+  const todayCount = stats.totalAttendance;
+  const activeQR = stats.qrActive ? 'Active' : 'Inactive';
+  const activeQrSubtext = `${stats.activeQrCount || 0} active`;
   const latestFeedbacks = feedbacks.slice(0, 5);
 
   return (
@@ -191,12 +232,58 @@ const DashboardHome = () => {
         </div>
       </div>
 
+      <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-400 mb-2">
+              Select Subject
+            </label>
+            <select
+              value={selectedSubject}
+              onChange={(e) => setSelectedSubject(e.target.value)}
+              className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+            >
+              <option value="">Select Subject</option>
+              {Array.isArray(user?.subjects) &&
+                user.subjects.map((subject) => (
+                  <option key={subject} value={subject}>
+                    {subject}
+                  </option>
+                ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-400 mb-2">
+              Select Date
+            </label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+            />
+          </div>
+        </div>
+        {!selectedSubject && (
+          <p className="text-sm text-amber-300 mt-3">
+            Please select a subject
+          </p>
+        )}
+      </div>
+
       {/* Top summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <SummaryCard title="Students" value={totalStudents} />
+        <SummaryCard
+          title="Total Students"
+          value={totalStudents}
+          onClick={async () => {
+            await fetchStudentsBySubject();
+            setShowStudents(true);
+          }}
+        />
         <SummaryCard title="Today Attendance" value={todayCount} />
-        <SummaryCard title="QR Codes" value={activeQR} />
-        <SummaryCard title="Attendance %" value={`${attendanceRate}%`} />
+        <SummaryCard title="QR Status" value={activeQR} subtext={activeQrSubtext} />
+        <SummaryCard title="Attendance %" value={`${stats.attendancePercentage || 0}%`} />
       </div>
 
       {/* Subject summary */}
@@ -220,7 +307,9 @@ const DashboardHome = () => {
                     style={{ width: `${sub.percentage}%` }}
                   />
                 </div>
-                <p className="text-xs text-gray-400 mt-2">{sub.percentage}% present</p>
+                <p className="text-xs text-gray-400 mt-2">
+                  {sub.present} present / {sub.total} total ({sub.percentage}%)
+                </p>
               </div>
             ))}
           </div>
@@ -390,15 +479,100 @@ const DashboardHome = () => {
           </div>
         )}
       </div>
+
+      {showStudents && (
+        <div
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowStudents(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="w-full max-w-4xl bg-slate-900/95 border border-slate-700 rounded-xl p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-white">
+                  Students - {selectedSubject || 'N/A'}
+                </h2>
+                <p className="text-sm text-gray-400 mt-1">
+                  Total registered students: {totalStudents}
+                </p>
+              </div>
+              <button
+                className="px-3 py-1 rounded border border-slate-700 text-gray-300 hover:bg-slate-800"
+                onClick={() => setShowStudents(false)}
+              >
+                Close
+              </button>
+            </div>
+
+            {studentsLoading ? (
+              <p className="text-sm text-gray-400">Loading students…</p>
+            ) : students.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm text-gray-200">
+                  <thead className="bg-slate-800/90">
+                    <tr>
+                      <Th>Student Name</Th>
+                      <Th>Student ID</Th>
+                      <Th>Mobile</Th>
+                      <Th>Course</Th>
+                      <Th>Semester</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {students.map((s) => (
+                      <tr
+                        key={s._id}
+                        className="border-b border-slate-800 hover:bg-slate-800/60"
+                      >
+                        <Td>{s.name || 'N/A'}</Td>
+                        <Td>{s.studentId || 'N/A'}</Td>
+                        <Td>{s.mobileNumber || 'N/A'}</Td>
+                        <Td>{s.course || 'N/A'}</Td>
+                        <Td>{s.semester || 'N/A'}</Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400">
+                No students found for selected subject
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-const SummaryCard = ({ title, value }) => (
-  <div className="bg-slate-900/80 border border-slate-700 p-4 rounded-xl shadow-md">
+const SummaryCard = ({ title, value, subtext, onClick }) => (
+  <div
+    onClick={onClick}
+    role={onClick ? 'button' : undefined}
+    tabIndex={onClick ? 0 : undefined}
+    className={`bg-slate-900/80 border border-slate-700 p-4 rounded-xl shadow-md ${
+      onClick ? 'cursor-pointer hover:bg-slate-900 transition' : ''
+    }`}
+  >
     <p className="text-gray-400 text-xs md:text-sm">{title}</p>
     <h2 className="text-2xl font-bold mt-2 text-white">{value}</h2>
+    {subtext ? <p className="text-xs text-gray-400 mt-1">{subtext}</p> : null}
   </div>
+);
+
+const Th = ({ children }) => (
+  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-300">
+    {children}
+  </th>
+);
+
+const Td = ({ children }) => (
+  <td className="px-3 py-2 align-middle text-xs text-gray-200">{children}</td>
 );
 
 export default DashboardHome;
