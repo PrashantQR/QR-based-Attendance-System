@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { FaCalendarAlt, FaTrash, FaDownload, FaEye } from 'react-icons/fa';
@@ -14,11 +14,15 @@ const AttendanceView = () => {
   const [loading, setLoading] = useState(true);
   const [subjectFilter, setSubjectFilter] = useState('all');
 
-  const [subjectSummary, setSubjectSummary] = useState([]);
-
   const [showStudents, setShowStudents] = useState(false);
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [registeredStudents, setRegisteredStudents] = useState([]);
+  const [courseStudentsTotal, setCourseStudentsTotal] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('time');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   const selectedSubjectLabel =
     subjectFilter === 'all' ? 'All Subjects' : subjectFilter;
@@ -26,24 +30,17 @@ const AttendanceView = () => {
   const fetchAttendance = useCallback(async () => {
     try {
       setLoading(true);
-      const formattedDate = new Date(selectedDate)
-        .toISOString()
-        .split('T')[0];
-
       const subject =
         subjectFilter === 'all' ? '' : encodeURIComponent(subjectFilter);
       const subjectQuery = subject ? `&subject=${subject}` : '';
 
       const response = await api.get(
-        `/attendance?date=${formattedDate}${subjectQuery}`
+        `/attendance?date=${selectedDate}${subjectQuery}`
       );
 
       const data = response.data?.data;
       setAttendance(Array.isArray(data?.attendance) ? data.attendance : []);
       setStats(data?.stats || {});
-      setSubjectSummary(
-        Array.isArray(data?.subjectSummary) ? data.subjectSummary : []
-      );
     } catch (error) {
       console.error('Error fetching attendance:', error);
       toast.error('Failed to fetch attendance data');
@@ -61,13 +58,12 @@ const AttendanceView = () => {
 
     setStudentsLoading(true);
     try {
-      const subject = subjectFilter === 'all' ? '' : subjectFilter;
       const course = user?.course || '';
       const semester = user?.semester || '';
 
       const params = new URLSearchParams();
       params.append('teacherId', String(user._id));
-      if (subject) params.append('subject', subject);
+      if (subjectFilter !== 'all') params.append('subject', subjectFilter);
       if (course) params.append('course', course);
       if (semester) params.append('semester', semester);
 
@@ -87,6 +83,25 @@ const AttendanceView = () => {
     await fetchRegisteredStudents();
     setShowStudents(true);
   };
+
+  const fetchCourseStudentsTotal = useCallback(async () => {
+    if (!user?._id) return;
+    try {
+      const course = user?.course || '';
+      const semester = user?.semester || '';
+
+      const params = new URLSearchParams();
+      params.append('teacherId', String(user._id));
+      if (course) params.append('course', course);
+      if (semester) params.append('semester', semester);
+
+      const res = await api.get(`/students?${params.toString()}`);
+      setCourseStudentsTotal(Number(res.data?.count || 0));
+    } catch (error) {
+      console.error('Error fetching total registered students:', error);
+      setCourseStudentsTotal(0);
+    }
+  }, [user?._id, user?.course, user?.semester]);
 
   const deleteAttendance = async (id) => {
     if (
@@ -109,6 +124,48 @@ const AttendanceView = () => {
     stats.total > 0
       ? Math.round(((stats.present || 0) / stats.total) * 100)
       : 0;
+
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+
+  const processedAttendance = useMemo(() => {
+    const filtered = attendance.filter((record) => {
+      if (!normalizedSearch) return true;
+      return String(record.student?.name || '')
+        .toLowerCase()
+        .includes(normalizedSearch);
+    });
+
+    const sorted = [...filtered].sort((a, b) => {
+      if (sortBy === 'status') {
+        const v1 = String(a.status || '').toLowerCase();
+        const v2 = String(b.status || '').toLowerCase();
+        return sortOrder === 'asc'
+          ? v1.localeCompare(v2)
+          : v2.localeCompare(v1);
+      }
+
+      const t1 = new Date(a.markedAt).getTime();
+      const t2 = new Date(b.markedAt).getTime();
+      return sortOrder === 'asc' ? t1 - t2 : t2 - t1;
+    });
+
+    return sorted;
+  }, [attendance, normalizedSearch, sortBy, sortOrder]);
+
+  const totalPages = Math.max(1, Math.ceil(processedAttendance.length / pageSize));
+
+  const paginatedAttendance = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return processedAttendance.slice(start, start + pageSize);
+  }, [processedAttendance, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedDate, subjectFilter, searchTerm, sortBy, sortOrder]);
+
+  useEffect(() => {
+    fetchCourseStudentsTotal();
+  }, [fetchCourseStudentsTotal]);
 
   const getLocationMeta = (record) => {
     const latitude = Number(record?.coordinates?.latitude);
@@ -170,11 +227,10 @@ const AttendanceView = () => {
         </div>
       </div>
 
-      {/* Controls and summary */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Date & subject filter */}
-        <div className="space-y-4">
-          <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
+      {/* Filters and controls */}
+      <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div>
             <label
               htmlFor="date"
               className="block text-xs font-semibold text-gray-400 mb-2"
@@ -192,8 +248,7 @@ const AttendanceView = () => {
               onChange={(e) => setSelectedDate(e.target.value)}
             />
           </div>
-
-          <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
+          <div>
             <label
               htmlFor="subjectFilter"
               className="block text-xs font-semibold text-gray-400 mb-2"
@@ -215,21 +270,59 @@ const AttendanceView = () => {
                 ))}
             </select>
           </div>
+          <div>
+            <label
+              htmlFor="searchStudent"
+              className="block text-xs font-semibold text-gray-400 mb-2"
+            >
+              Search Student Name
+            </label>
+            <input
+              id="searchStudent"
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Type student name..."
+              className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+            />
+          </div>
         </div>
 
-        {/* Stats cards */}
-        <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
-          <div
-            onClick={handleTotalStudentsClick}
-            className="cursor-pointer"
-            role="button"
-            tabIndex={0}
-          >
-            <SummaryCard title="Total Students" value={stats.total || 0} />
+        <div className="mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleTotalStudentsClick}
+              className="px-3 py-1.5 rounded-lg border border-cyan-500/40 text-cyan-300 text-xs font-medium hover:bg-cyan-500/10"
+              title="View registered students"
+            >
+              Total Registered Students: {courseStudentsTotal}
+            </button>
+            <span className="px-3 py-1.5 rounded-lg border border-slate-700 text-gray-300 text-xs">
+              Filtered Records: {processedAttendance.length}
+            </span>
+            <span className="px-3 py-1.5 rounded-lg border border-slate-700 text-gray-300 text-xs">
+              Attendance %: {attendanceRate}%
+            </span>
           </div>
-          <SummaryCard title="Present" value={stats.present || 0} />
-          <SummaryCard title="Late" value={stats.late || 0} />
-          <SummaryCard title="Attendance Rate" value={`${attendanceRate}%`} />
+          <div className="flex gap-2">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-2 py-1.5 rounded bg-slate-950 border border-slate-700 text-xs text-gray-200"
+            >
+              <option value="time">Sort: Time</option>
+              <option value="status">Sort: Status</option>
+            </select>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="px-2 py-1.5 rounded bg-slate-950 border border-slate-700 text-xs text-gray-200"
+            >
+              <option value="desc">Order: Desc</option>
+              <option value="asc">Order: Asc</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -259,9 +352,9 @@ const AttendanceView = () => {
           </div>
         </div>
 
-        {attendance.length > 0 ? (
+        {paginatedAttendance.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm text-gray-200">
+            <table className="min-w-[980px] w-full text-sm text-gray-200">
               <thead className="bg-slate-800/90">
                 <tr>
                   <Th>Student Name</Th>
@@ -278,7 +371,7 @@ const AttendanceView = () => {
                 </tr>
               </thead>
               <tbody>
-                {attendance.map((record) => (
+                {paginatedAttendance.map((record) => (
                   <tr
                     key={record._id}
                     className="border-b border-slate-800 hover:bg-slate-800/60"
@@ -353,41 +446,33 @@ const AttendanceView = () => {
             <p>No records found for selected filters</p>
           </div>
         )}
-      </div>
 
-      {/* Subject-wise Summary */}
-      <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
-        <h2 className="text-lg font-semibold text-white mb-4">
-          Subject-wise Summary
-        </h2>
-        {subjectSummary.length > 0 ? (
-          <div className="grid md:grid-cols-3 gap-4">
-            {subjectSummary.map((s) => (
-              <div
-                key={s.subject || 'unknown'}
-                className="bg-slate-950/70 border border-slate-700 rounded-xl p-4"
+        {processedAttendance.length > 0 && (
+          <div className="mt-4 flex items-center justify-between text-xs text-gray-400">
+            <span>
+              Page {currentPage} of {totalPages}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-2 py-1 rounded border border-slate-700 text-gray-300 disabled:opacity-50"
               >
-                <p className="text-sm text-slate-100 mb-1">
-                  {s.subject || '—'}
-                </p>
-                <div className="w-full bg-slate-800 h-2 rounded overflow-hidden mb-1">
-                  <div
-                    className="bg-emerald-500 h-2"
-                    style={{
-                      width: `${Math.round(s.percentage || 0)}%`
-                    }}
-                  />
-                </div>
-                <p className="text-xs text-gray-400">
-                  {s.present || 0} present / {s.total || 0} sessions
-                </p>
-              </div>
-            ))}
+                Prev
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                disabled={currentPage === totalPages}
+                className="px-2 py-1 rounded border border-slate-700 text-gray-300 disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
           </div>
-        ) : (
-          <p className="text-sm text-gray-400">
-            No subject-wise data available.
-          </p>
         )}
       </div>
 
@@ -411,6 +496,9 @@ const AttendanceView = () => {
                 <p className="text-sm text-gray-400 mt-1">
                   {selectedSubjectLabel} • {user?.course || '—'} •{' '}
                   {user?.semester || '—'}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Total registered in course: {courseStudentsTotal}
                 </p>
               </div>
               <button
@@ -464,13 +552,6 @@ const AttendanceView = () => {
     </div>
   );
 };
-
-const SummaryCard = ({ title, value }) => (
-  <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-4">
-    <p className="text-xs text-gray-400">{title}</p>
-    <h3 className="text-xl font-semibold text-white mt-1">{value}</h3>
-  </div>
-);
 
 const Th = ({ children }) => (
   <th className="px-3 py-2 text-left text-xs font-semibold text-gray-300">
