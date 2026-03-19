@@ -14,23 +14,9 @@ const DashboardHome = () => {
     attendanceRate: 0
   });
   const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [subjectSummary, setSubjectSummary] = useState([]);
   const [loading, setLoading] = useState(true);
   const enrolledSubjects = Array.isArray(user?.subjects) ? user.subjects : [];
-  const subjectSummary = attendanceRecords.reduce((acc, record) => {
-    const subject = record.qrCode?.subject;
-    if (!subject || (enrolledSubjects.length > 0 && !enrolledSubjects.includes(subject))) {
-      return acc;
-    }
-
-    if (!acc[subject]) {
-      acc[subject] = { total: 0, present: 0, late: 0 };
-    }
-
-    acc[subject].total += 1;
-    if (record.status === 'present') acc[subject].present += 1;
-    if (record.status === 'late') acc[subject].late += 1;
-    return acc;
-  }, {});
 
   useEffect(() => {
     fetchStudentStats();
@@ -61,6 +47,20 @@ const DashboardHome = () => {
       }
 
       setAttendanceRecords(attendanceArray);
+      const backendSubjectSummary = Array.isArray(payload.subjectSummary)
+        ? payload.subjectSummary
+        : [];
+      if (
+        !Array.isArray(payload.subjectSummary) &&
+        payload.subjectSummary != null
+      ) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          'Expected subjectSummary array from /attendance/my-attendance but got:',
+          payload.subjectSummary
+        );
+      }
+      setSubjectSummary(backendSubjectSummary);
       const presentCount = attendanceArray.filter(
         (a) => a.status === 'present'
       ).length;
@@ -110,27 +110,40 @@ const DashboardHome = () => {
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-gray-300">Subject-wise Attendance</h3>
           <span className="text-[11px] text-gray-400">
-            {Object.keys(subjectSummary).length} subject{Object.keys(subjectSummary).length === 1 ? '' : 's'}
+            {subjectSummary.length} subject
+            {subjectSummary.length === 1 ? '' : 's'}
           </span>
         </div>
 
-        {Object.keys(subjectSummary).length > 0 ? (
+        {subjectSummary.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {Object.entries(subjectSummary).map(([subject, summary]) => {
-              const rate = summary.total > 0 ? Math.round((summary.present / summary.total) * 100) : 0;
+            {subjectSummary.map((summary) => {
+              const total = Number(summary.totalSessions || 0);
+              const present = Number(summary.present || 0);
+              const absent = Number(summary.absent || 0);
+              const rate =
+                total > 0 ? Math.round((present / total) * 100) : 0;
               return (
                 <div
-                  key={subject}
+                  key={summary.subject}
                   className="bg-primary/80 border border-white/5 rounded-2.5xl p-4 shadow-soft-glass"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-semibold text-gray-100">{subject}</h4>
+                    <h4 className="text-sm font-semibold text-gray-100">
+                      {summary.subject || 'Unknown'}
+                    </h4>
                     <span className="text-xs text-emerald-300 font-semibold">{rate}%</span>
                   </div>
-                  <div className="text-xs text-gray-400">
-                    <p>{summary.present} present / {summary.total} sessions</p>
-                    <p>{summary.late} late</p>
-                  </div>
+                  {total > 0 ? (
+                    <div className="text-xs text-gray-400">
+                      <p>
+                        {present} present / {total} sessions
+                      </p>
+                      <p>{absent} absent</p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400">No sessions</p>
+                  )}
                 </div>
               );
             })}

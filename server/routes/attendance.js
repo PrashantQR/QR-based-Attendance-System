@@ -370,6 +370,78 @@ router.get('/my-attendance', protect, authorize('student'), async (req, res) => 
         ? Math.round((presentSessions / totalSessions) * 100)
         : 0;
 
+    // Build subject-wise summary based on sessions (ground truth) + attendance
+    const subjectMap = new Map();
+
+    // Initialize per-subject session counts
+    for (const s of sessions) {
+      const key = s.subject || 'Unknown';
+      if (!subjectMap.has(key)) {
+        subjectMap.set(key, {
+          subject: key,
+          totalSessions: 0,
+          present: 0,
+          absent: 0,
+          late: 0,
+          percentage: 0
+        });
+      }
+      const entry = subjectMap.get(key);
+      entry.totalSessions += 1;
+    }
+
+    // Map sessionId -> subject for quick lookup
+    const sessionIdToSubject = new Map(
+      sessions.map((s) => [String(s._id), s.subject || 'Unknown'])
+    );
+
+    // Track which sessions per subject the student actually attended
+    const subjectPresentSessions = new Map();
+
+    for (const a of attendance) {
+      const sessionId = String(a.qrCode?._id || a.qrCode);
+      const subject = sessionIdToSubject.get(sessionId) || 'Unknown';
+
+      if (!subjectMap.has(subject)) {
+        subjectMap.set(subject, {
+          subject,
+          totalSessions: 0,
+          present: 0,
+          absent: 0,
+          late: 0,
+          percentage: 0
+        });
+      }
+
+      const entry = subjectMap.get(subject);
+
+      if (!subjectPresentSessions.has(subject)) {
+        subjectPresentSessions.set(subject, new Set());
+      }
+      const subjectSet = subjectPresentSessions.get(subject);
+
+      if (!subjectSet.has(sessionId)) {
+        subjectSet.add(sessionId);
+        entry.present += 1;
+      }
+
+      if (a.status === 'late') {
+        entry.late += 1;
+      }
+    }
+
+    // Finalize absent + percentage per subject
+    for (const entry of subjectMap.values()) {
+      const { totalSessions: subTotal, present } = entry;
+      const absent =
+        subTotal > present ? subTotal - present : 0;
+      entry.absent = absent;
+      entry.percentage =
+        subTotal > 0 ? Math.round((present / subTotal) * 100) : 0;
+    }
+
+    const subjectSummary = Array.from(subjectMap.values());
+
     res.json({
       success: true,
       data: {
@@ -381,7 +453,8 @@ router.get('/my-attendance', protect, authorize('student'), async (req, res) => 
           absent: absentSessions,
           late: lateCount,
           attendanceRate
-        }
+        },
+        subjectSummary
       }
     });
   } catch (error) {
