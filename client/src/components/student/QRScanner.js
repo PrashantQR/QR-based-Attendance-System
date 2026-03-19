@@ -55,6 +55,32 @@ const QRScanner = () => {
         } catch (_) {}
       }
 
+      // If someone accidentally scans an Exam QR here, it won't exist in attendance QR table.
+      // Detect the exam payload and show a helpful message instead of "QR code not found".
+      let parsed;
+      try {
+        parsed = JSON.parse(decodedText);
+      } catch {
+        parsed = null;
+      }
+      if (
+        parsed &&
+        parsed.testId &&
+        parsed.token &&
+        parsed.exp
+      ) {
+        const msg =
+          'This looks like an Exam QR. Please open `Exam -> Scan Exam QR` (not `Scan QR Code`) to start the exam.';
+        setResult({ success: false, message: msg, data: null });
+        toast.error(msg);
+        setTimeout(() => {
+          setScanned(false);
+          scannedRef.current = false;
+          resetScanner();
+        }, 3000);
+        return;
+      }
+
       const markResult = await validateAndMarkAttendance(decodedText);
 
       setResult({
