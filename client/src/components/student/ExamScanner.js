@@ -11,6 +11,7 @@ const ExamScanner = () => {
   const [initializing, setInitializing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [blockedMessage, setBlockedMessage] = useState('');
+  const isBlockedRef = useRef(false);
   const scannerRef = useRef(null);
   const isStartingRef = useRef(false);
   const scannedRef = useRef(false);
@@ -30,7 +31,14 @@ const ExamScanner = () => {
   }, []);
 
   const handleScan = async (decodedText) => {
-    if (!decodedText || scannedRef.current || loading || initializing) return;
+    if (
+      !decodedText ||
+      scannedRef.current ||
+      isBlockedRef.current ||
+      loading ||
+      initializing
+    )
+      return;
     scannedRef.current = true;
     setScanning(false);
 
@@ -79,16 +87,17 @@ const ExamScanner = () => {
     } catch (error) {
       console.error('Exam start via QR error:', error);
       const message = error.response?.data?.message || 'Failed to start exam';
-      toast.error(message);
       const isTestNotActive = typeof message === 'string' && /not active/i.test(message);
       if (isTestNotActive) {
         // Prevent continuous toasts: keep the scanner stopped until teacher activates the test.
         setBlockedMessage(message);
+        isBlockedRef.current = true;
         setScanning(false);
         await stopCurrentScanner();
         return;
       }
 
+      toast.error(message);
       setBlockedMessage('');
       scannedRef.current = false;
       setScanning(true);
@@ -153,6 +162,7 @@ const ExamScanner = () => {
     isStartingRef.current = true;
     setInitializing(true);
     setBlockedMessage('');
+    isBlockedRef.current = false;
     scannedRef.current = false;
     setScanning(true);
 
