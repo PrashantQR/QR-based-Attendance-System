@@ -86,8 +86,24 @@ const ExamScanner = () => {
     }
   };
 
-  const handleError = () => {
-    // ignore non-fatal decode errors
+  const handleError = (err) => {
+    // html5-qrcode emits frequent non-fatal scan errors; show only actionable ones
+    const errString = typeof err === 'string' ? err : (err?.message || '');
+    const fatalHints = [
+      'NotAllowedError', // permissions denied
+      'NotFoundError', // no camera
+      'NotReadableError',
+      'OverconstrainedError',
+      'StreamApiNotSupportedError',
+      'InsecureContextError'
+    ];
+
+    if (fatalHints.some((h) => errString.includes(h))) {
+      toast.error(
+        'Camera error: ' + (errString || 'permission or device issue')
+      );
+      setScanning(false);
+    }
   };
 
   const stopCurrentScanner = async () => {
@@ -107,7 +123,11 @@ const ExamScanner = () => {
       scannerRef.current = new Html5Qrcode('exam-qr-reader');
       await scannerRef.current.start(
         cameraConfig,
-        { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+        {
+          fps: 15,
+          qrbox: { width: 320, height: 320 },
+          aspectRatio: 1.0
+        },
         handleScan,
         handleError
       );
