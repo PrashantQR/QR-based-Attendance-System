@@ -83,31 +83,49 @@ router.get(
   authorize('teacher'),
   async (req, res) => {
     try {
+      console.log('[teacher/subjects] Teacher ID:', req.user?._id);
       const assignedNames = Array.isArray(req.user.subjects)
         ? req.user.subjects
         : [];
 
-      if (!assignedNames.length) {
-        return res.json({ success: true, data: [] });
-      }
+      console.log('[teacher/subjects] User.subjects:', assignedNames);
 
-      // Prefer subjects created by this teacher.
-      let subjects = await Subject.find({
-        createdBy: req.user._id,
-        name: { $in: assignedNames }
+      let subjects = [];
+
+      // 1) Prefer subjects created/owned by this teacher
+      // (works even when User.subjects is empty)
+      subjects = await Subject.find({
+        $or: [
+          { createdBy: req.user._id },
+          // compatibility if someone used teacherId field
+          { teacherId: req.user._id }
+        ]
       })
-        .select('_id name course semester')
+        .select('_id name course semester createdBy teacherId')
         .sort({ name: 1 });
 
-      // Fallback: if the teacher's Subject docs are not found by createdBy,
-      // still return matches by name.
-      if (!subjects.length) {
-        subjects = await Subject.find({
+      // 2) If User.subjects names exist, intersect/extend by those names too
+      if (assignedNames.length) {
+        const byName = await Subject.find({
           name: { $in: assignedNames }
         })
-          .select('_id name course semester')
+          .select('_id name course semester createdBy teacherId')
           .sort({ name: 1 });
+
+        const map = new Map();
+        for (const s of [...subjects, ...byName]) {
+          map.set(String(s._id), s);
+        }
+        subjects = Array.from(map.values());
       }
+
+      // 3) Ensure stable output
+      subjects = subjects.map((s) => ({
+        _id: s._id,
+        name: s.name,
+        course: s.course,
+        semester: s.semester
+      }));
 
       return res.json({ success: true, data: subjects });
     } catch (error) {
