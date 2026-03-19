@@ -110,6 +110,25 @@ const AttendanceView = () => {
       ? Math.round(((stats.present || 0) / stats.total) * 100)
       : 0;
 
+  const getLocationMeta = (record) => {
+    const latitude = Number(record?.coordinates?.latitude);
+    const longitude = Number(record?.coordinates?.longitude);
+
+    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+      return {
+        label: 'N/A',
+        mapUrl: null
+      };
+    }
+
+    const latText = latitude.toFixed(4);
+    const lngText = longitude.toFixed(4);
+    return {
+      label: `${latText}, ${lngText}`,
+      mapUrl: `https://www.google.com/maps?q=${latitude},${longitude}`
+    };
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -247,12 +266,12 @@ const AttendanceView = () => {
                 <tr>
                   <Th>Student Name</Th>
                   <Th>Student ID</Th>
-                  <Th>Department</Th>
                   <Th>Course</Th>
                   <Th>Semester</Th>
                   <Th>Subject</Th>
                   <Th>Year</Th>
                   <Th>Mobile</Th>
+                  <Th>Location</Th>
                   <Th>Status</Th>
                   <Th>Time</Th>
                   <Th>Actions</Th>
@@ -266,16 +285,38 @@ const AttendanceView = () => {
                   >
                     <Td>
                       <span className="font-semibold">
-                        {record.student.name}
+                        {record.student?.name || 'N/A'}
                       </span>
                     </Td>
-                    <Td>{record.student.studentId}</Td>
-                    <Td>{record.student.department}</Td>
+                    <Td>{record.student?.studentId || 'N/A'}</Td>
                     <Td>{record.qrCode?.course || '—'}</Td>
                     <Td>{record.qrCode?.semester || '—'}</Td>
                     <Td>{record.qrCode?.subject || '—'}</Td>
-                    <Td>{record.student.year}</Td>
-                    <Td>{record.student.mobileNumber}</Td>
+                    <Td>{record.student?.year || 'N/A'}</Td>
+                    <Td>
+                      <span className="inline-block max-w-[8rem] truncate">
+                        {record.student?.mobileNumber || 'N/A'}
+                      </span>
+                    </Td>
+                    <Td>
+                      {(() => {
+                        const location = getLocationMeta(record);
+                        if (!location.mapUrl) {
+                          return <span className="text-gray-400">N/A</span>;
+                        }
+                        return (
+                          <a
+                            href={location.mapUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            title="Click to open in Google Maps"
+                            className="inline-block max-w-[10rem] truncate text-cyan-300 hover:text-cyan-200 underline underline-offset-2"
+                          >
+                            <span className="text-[11px]">{location.label}</span>
+                          </a>
+                        );
+                      })()}
+                    </Td>
                     <Td>
                       <span
                         className={`px-2 py-0.5 rounded-full text-xs capitalize ${
