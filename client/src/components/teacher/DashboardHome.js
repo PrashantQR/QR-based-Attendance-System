@@ -31,6 +31,7 @@ const DashboardHome = () => {
     new Date().toISOString().split('T')[0]
   );
   const [showStudents, setShowStudents] = useState(false);
+  const [studentModalMode, setStudentModalMode] = useState('all'); // 'all' | 'present' | 'absent'
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [students, setStudents] = useState([]);
   const [feedbacks, setFeedbacks] = useState([]);
@@ -98,25 +99,70 @@ const DashboardHome = () => {
     }
   }, [logout, navigate, selectedDate, selectedSubject]);
 
-  const fetchStudentsBySubject = useCallback(async () => {
-    if (!selectedSubject || !user?._id) return;
-    setStudentsLoading(true);
-    try {
-      const params = new URLSearchParams({
-        teacherId: String(user._id),
-        subject: selectedSubject
-      });
-      if (user?.course) params.append('course', user.course);
-      if (user?.semester) params.append('semester', user.semester);
-      const res = await api.get(`/students?${params.toString()}`);
-      setStudents(Array.isArray(res.data?.data) ? res.data.data : []);
-    } catch (error) {
-      console.error('Error fetching students list:', error);
-      setStudents([]);
-    } finally {
-      setStudentsLoading(false);
-    }
-  }, [selectedSubject, user?._id, user?.course, user?.semester]);
+  const openStudentModal = useCallback(
+    async (mode) => {
+      if (!selectedSubject || !user?._id) return;
+      setStudentModalMode(mode);
+      setShowStudents(true);
+      setStudentsLoading(true);
+
+      try {
+        const params = new URLSearchParams({
+          teacherId: String(user._id),
+          subject: selectedSubject
+        });
+        if (user?.course) params.append('course', user.course);
+        if (user?.semester) params.append('semester', user.semester);
+
+        const [studentsRes, attendanceRes] = await Promise.all([
+          api.get(`/students?${params.toString()}`),
+          mode === 'all'
+            ? Promise.resolve(null)
+            : api.get(
+                `/attendance?date=${selectedDate}&subject=${encodeURIComponent(
+                  selectedSubject
+                )}`
+              )
+        ]);
+
+        const allStudents = Array.isArray(studentsRes.data?.data)
+          ? studentsRes.data.data
+          : [];
+
+        if (!attendanceRes || mode === 'all') {
+          setStudents(allStudents);
+        } else {
+          const attendanceList = Array.isArray(
+            attendanceRes.data?.data?.attendance
+          )
+            ? attendanceRes.data.data.attendance
+            : [];
+
+          const scannedIds = new Set(
+            attendanceList.map((record) =>
+              String(record.student?._id || record.student)
+            )
+          );
+
+          if (mode === 'present') {
+            setStudents(
+              allStudents.filter((s) => scannedIds.has(String(s._id)))
+            );
+          } else if (mode === 'absent') {
+            setStudents(
+              allStudents.filter((s) => !scannedIds.has(String(s._id)))
+            );
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard students:', error);
+        setStudents([]);
+      } finally {
+        setStudentsLoading(false);
+      }
+    },
+    [selectedSubject, selectedDate, user?._id, user?.course, user?.semester]
+  );
 
   const fetchFeedback = useCallback(async () => {
     if (!user?._id) return;
@@ -304,34 +350,19 @@ const DashboardHome = () => {
         <SummaryCard
           title="Total Students"
           value={totalStudents}
-          onClick={async () => {
-            await fetchStudentsBySubject();
-            setShowStudents(true);
-          }}
+          onClick={() => openStudentModal('all')}
         />
         <SummaryCard
           title="Present"
           value={presentCount}
           highlight="success"
-          onClick={() => {
-            navigate(
-              `/teacher/attendance?subject=${encodeURIComponent(
-                selectedSubject
-              )}&date=${selectedDate}&status=present`
-            );
-          }}
+          onClick={() => openStudentModal('present')}
         />
         <SummaryCard
           title="Absent"
           value={absentCount}
           highlight="danger"
-          onClick={() => {
-            navigate(
-              `/teacher/attendance?subject=${encodeURIComponent(
-                selectedSubject
-              )}&date=${selectedDate}&status=absent`
-            );
-          }}
+          onClick={() => openStudentModal('absent')}
         />
         <SummaryCard
           title="QR Status"
@@ -563,10 +594,15 @@ const DashboardHome = () => {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-lg font-semibold text-white">
-                  Students - {selectedSubject || 'N/A'}
+                  {studentModalMode === 'present'
+                    ? 'Present Students'
+                    : studentModalMode === 'absent'
+                    ? 'Absent Students'
+                    : 'All Students'}{' '}
+                  - {selectedSubject || 'N/A'}
                 </h2>
                 <p className="text-sm text-gray-400 mt-1">
-                  Total registered students: {totalStudents}
+                  Showing {students.length} students
                 </p>
               </div>
               <button

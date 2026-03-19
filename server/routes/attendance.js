@@ -306,37 +306,78 @@ router.get('/range', protect, authorize('teacher'), async (req, res) => {
   }
 });
 
-// @desc    Get student's own attendance
+// @desc    Get student's own attendance with session-based stats
 // @route   GET /api/attendance/my-attendance
 // @access  Private (Students only)
 router.get('/my-attendance', protect, authorize('student'), async (req, res) => {
   try {
-    console.log('My attendance request received');
-    console.log('User:', req.user);
-    console.log('Query params:', req.query);
-    
-    const { startDate, endDate } = req.query;
-    
+    const { startDate, endDate, subject } = req.query;
+
     const start = startDate ? new Date(startDate) : new Date();
     start.setDate(start.getDate() - 30); // Default to last 30 days
-    
+
     const end = endDate ? new Date(endDate) : new Date();
     end.setHours(23, 59, 59, 999);
 
-    console.log('Date range:', { start, end });
+    // Find all QR sessions the student was expected to attend
+    const sessionFilter = {
+      course: req.user.course,
+      semester: req.user.semester,
+      generatedAt: { $gte: start, $lte: end }
+    };
 
-    const attendance = await Attendance.getStudentAttendance(
-      req.user._id,
-      start,
-      end
+    if (subject && subject !== 'all') {
+      sessionFilter.subject = subject;
+    } else if (Array.isArray(req.user.subjects) && req.user.subjects.length > 0) {
+      sessionFilter.subject = { $in: req.user.subjects };
+    }
+
+    const sessions = await QRCodeModel.find(sessionFilter).select(
+      '_id subject course semester generatedAt teacherName'
     );
+    const sessionIds = sessions.map((s) => s._id);
 
-    console.log('Attendance found:', attendance.length, 'records');
+    // Attendance records for those sessions
+    const attendance = await Attendance.find({
+      student: req.user._id,
+      qrCode: { $in: sessionIds },
+      isDeleted: false,
+      date: { $gte: start, $lte: end }
+    })
+      .populate('qrCode', 'subject course semester generatedBy')
+      .populate('teacher', 'name')
+      .sort({ date: -1, markedAt: -1 });
+
+    const totalSessions = sessions.length;
+
+    // Sessions where the student scanned (present OR late)
+    const scannedSessionIds = new Set(
+      attendance.map((a) => String(a.qrCode?._id || a.qrCode))
+    );
+    const presentSessions = scannedSessionIds.size;
+
+    const lateCount = attendance.filter((a) => a.status === 'late').length;
+    const absentSessions =
+      totalSessions > presentSessions ? totalSessions - presentSessions : 0;
+
+    const attendanceRate =
+      totalSessions > 0
+        ? Math.round((presentSessions / totalSessions) * 100)
+        : 0;
 
     res.json({
       success: true,
-      count: attendance.length,
-      data: attendance
+      data: {
+        attendance,
+        sessions,
+        stats: {
+          totalSessions,
+          present: presentSessions,
+          absent: absentSessions,
+          late: lateCount,
+          attendanceRate
+        }
+      }
     });
   } catch (error) {
     console.error('Get my attendance error:', error);

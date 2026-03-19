@@ -7,8 +7,9 @@ const MyAttendance = () => {
   const { user } = useAuth();
   const [attendance, setAttendance] = useState([]);
   const [stats, setStats] = useState({
-    total: 0,
+    totalSessions: 0,
     present: 0,
+    absent: 0,
     late: 0,
     attendanceRate: 0
   });
@@ -29,24 +30,23 @@ const MyAttendance = () => {
       const response = await api.get('/attendance/my-attendance', {
         params: {
           startDate,
-          endDate
+          endDate,
+          subject: subjectFilter !== 'all' ? subjectFilter : undefined
         }
       });
 
       console.log('Attendance response:', response.data);
-      const data = response.data.data;
+      const payload = response.data.data || {};
+      const data = Array.isArray(payload.attendance) ? payload.attendance : [];
       setAttendance(data);
 
-      // Calculate stats
-      const presentCount = data.filter(a => a.status === 'present').length;
-      const lateCount = data.filter(a => a.status === 'late').length;
-      const totalCount = data.length;
-
+      const apiStats = payload.stats || {};
       setStats({
-        total: totalCount,
-        present: presentCount,
-        late: lateCount,
-        attendanceRate: totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0
+        totalSessions: apiStats.totalSessions || 0,
+        present: apiStats.present || 0,
+        absent: apiStats.absent || 0,
+        late: apiStats.late || 0,
+        attendanceRate: apiStats.attendanceRate || 0
       });
     } catch (error) {
       console.error('Error fetching attendance:', error);
@@ -54,7 +54,7 @@ const MyAttendance = () => {
     } finally {
       setLoading(false);
     }
-  }, [startDate, endDate]);
+  }, [startDate, endDate, subjectFilter]);
 
   useEffect(() => {
     fetchAttendance();
@@ -123,9 +123,9 @@ const MyAttendance = () => {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-        <StatCard label="Total" value={stats.total} />
+        <StatCard label="Total Sessions" value={stats.totalSessions} />
         <StatCard label="Present" value={stats.present} />
-        <StatCard label="Late" value={stats.late} />
+        <StatCard label="Absent" value={stats.absent} />
         <StatCard label="Rate" value={`${stats.attendanceRate}%`} />
       </div>
 
