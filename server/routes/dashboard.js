@@ -85,6 +85,10 @@ router.get('/', protect, authorize('teacher'), async (req, res) => {
       ...attendanceFilter,
       status: 'present'
     });
+    const absentCount =
+      totalStudents > presentAttendance
+        ? totalStudents - presentAttendance
+        : 0;
 
     const attendancePercentage =
       totalStudents > 0
@@ -119,6 +123,8 @@ router.get('/', protect, authorize('teacher'), async (req, res) => {
         subject,
         totalStudents,
         totalAttendance,
+        presentCount: presentAttendance,
+        absentCount,
         attendancePercentage,
         qrActive,
         activeQrCount,

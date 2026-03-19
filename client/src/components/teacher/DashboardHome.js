@@ -17,6 +17,8 @@ const DashboardHome = () => {
   const [stats, setStats] = useState({
     totalStudents: 0,
     totalAttendance: 0,
+    presentCount: 0,
+    absentCount: 0,
     attendancePercentage: 0,
     qrActive: false,
     activeQrCount: 0,
@@ -53,6 +55,8 @@ const DashboardHome = () => {
       setStats({
         totalStudents: Number(data?.totalStudents || 0),
         totalAttendance: Number(data?.totalAttendance || 0),
+        presentCount: Number(data?.presentCount || 0),
+        absentCount: Number(data?.absentCount || 0),
         attendancePercentage: Number(data?.attendancePercentage || 0),
         qrActive: Boolean(data?.qrActive),
         activeQrCount: Number(data?.activeQrCount || 0),
@@ -222,7 +226,8 @@ const DashboardHome = () => {
   }
 
   const totalStudents = stats.totalStudents;
-  const todayCount = stats.totalAttendance;
+  const presentCount = stats.presentCount;
+  const absentCount = stats.absentCount;
   const activeQR = stats.qrActive ? 'Active' : 'Inactive';
   const activeQrSubtext = `${stats.activeQrCount || 0} active`;
   const latestFeedbacks = feedbacks.slice(0, 5);
@@ -295,7 +300,7 @@ const DashboardHome = () => {
       </div>
 
       {/* Top summary cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
         <SummaryCard
           title="Total Students"
           value={totalStudents}
@@ -304,9 +309,40 @@ const DashboardHome = () => {
             setShowStudents(true);
           }}
         />
-        <SummaryCard title="Today Attendance" value={todayCount} />
-        <SummaryCard title="QR Status" value={activeQR} subtext={activeQrSubtext} />
-        <SummaryCard title="Attendance %" value={`${stats.attendancePercentage || 0}%`} />
+        <SummaryCard
+          title="Present"
+          value={presentCount}
+          highlight="success"
+          onClick={() => {
+            navigate(
+              `/teacher/attendance?subject=${encodeURIComponent(
+                selectedSubject
+              )}&date=${selectedDate}&status=present`
+            );
+          }}
+        />
+        <SummaryCard
+          title="Absent"
+          value={absentCount}
+          highlight="danger"
+          onClick={() => {
+            navigate(
+              `/teacher/attendance?subject=${encodeURIComponent(
+                selectedSubject
+              )}&date=${selectedDate}&status=absent`
+            );
+          }}
+        />
+        <SummaryCard
+          title="QR Status"
+          value={activeQR}
+          subtext={activeQrSubtext}
+          highlight={stats.qrActive ? 'success' : 'muted'}
+        />
+        <SummaryCard
+          title="Attendance %"
+          value={`${stats.attendancePercentage || 0}%`}
+        />
       </div>
 
       {/* Subject summary */}
@@ -361,68 +397,78 @@ const DashboardHome = () => {
       </div>
 
       {/* Evaluation Insights */}
-      <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
-        <h2 className="text-lg font-semibold text-white mb-4">
+      <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-4">
+        <h2 className="text-sm font-semibold text-white mb-3">
           Evaluation Insights
         </h2>
 
         {evaluationStatsLoading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
+          <p className="text-xs text-gray-400">Loading…</p>
         ) : evaluationStats?.total ? (
-          <div>
+          <div className="flex flex-col md:flex-row md:items-stretch gap-4">
             {/* Average Rating Card */}
-            <div className="bg-green-500/20 p-4 rounded-lg border border-green-500/20 mb-4">
-              <div className="text-sm text-green-200">Average Rating</div>
-              <div className="text-3xl font-bold text-white">
-                {evaluationStats.overall} ⭐
+            <div className="md:w-1/3 bg-green-500/15 px-3 py-3 rounded-lg border border-green-500/25 flex flex-col justify-center">
+              <div className="text-[11px] text-green-200 uppercase tracking-wide">
+                Average Rating
               </div>
-              <div className="text-sm text-green-200/80">
+              <div className="mt-1 text-2xl font-semibold text-white flex items-baseline gap-1">
+                <span>{evaluationStats.overall}</span>
+                <span className="text-sm">⭐</span>
+              </div>
+              <div className="mt-1 text-[11px] text-green-200/80">
                 {evaluationStats.total} responses
               </div>
             </div>
 
             {/* Bar Chart */}
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart
-                data={[
-                  {
-                    name: 'Teaching',
-                    value: evaluationStats.stats?.teachingQuality ?? 0
-                  },
-                  {
-                    name: 'Communication',
-                    value: evaluationStats.stats?.communication ?? 0
-                  },
-                  {
-                    name: 'Interaction',
-                    value: evaluationStats.stats?.interaction ?? 0
-                  },
-                  {
-                    name: 'Knowledge',
-                    value: evaluationStats.stats?.knowledge ?? 0
-                  },
-                  {
-                    name: 'Doubt Solving',
-                    value: evaluationStats.stats?.doubtSolving ?? 0
-                  }
-                ]}
-              >
-                <XAxis dataKey="name" stroke="#94a3b8" />
-                <YAxis domain={[0, 5]} stroke="#94a3b8" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 12
-                  }}
-                  formatter={(val) => [`${val}`, 'Average']}
-                />
-                <Bar dataKey="value" fill="#10b981" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="md:w-2/3 h-[200px]">
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart
+                  data={[
+                    {
+                      name: 'Teaching',
+                      value: evaluationStats.stats?.teachingQuality ?? 0
+                    },
+                    {
+                      name: 'Comm',
+                      value: evaluationStats.stats?.communication ?? 0
+                    },
+                    {
+                      name: 'Interact',
+                      value: evaluationStats.stats?.interaction ?? 0
+                    },
+                    {
+                      name: 'Knowledge',
+                      value: evaluationStats.stats?.knowledge ?? 0
+                    },
+                    {
+                      name: 'Doubts',
+                      value: evaluationStats.stats?.doubtSolving ?? 0
+                    }
+                  ]}
+                >
+                  <XAxis dataKey="name" stroke="#94a3b8" tick={{ fontSize: 10 }} />
+                  <YAxis
+                    domain={[0, 5]}
+                    stroke="#94a3b8"
+                    tick={{ fontSize: 10 }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: 8,
+                      padding: 8
+                    }}
+                    formatter={(val) => [`${val}`, 'Avg']}
+                  />
+                  <Bar dataKey="value" fill="#10b981" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         ) : (
-          <p className="text-sm text-gray-400">No feedback available yet</p>
+          <p className="text-xs text-gray-400">No feedback available yet</p>
         )}
       </div>
 
@@ -573,20 +619,35 @@ const DashboardHome = () => {
   );
 };
 
-const SummaryCard = ({ title, value, subtext, onClick }) => (
+const SummaryCard = ({ title, value, subtext, onClick, highlight }) => {
+  const baseClasses =
+    'p-4 rounded-xl shadow-md border bg-slate-900/80 border-slate-700';
+  const highlightClasses =
+    highlight === 'success'
+      ? 'border-emerald-500/40 bg-emerald-500/10'
+      : highlight === 'danger'
+      ? 'border-rose-500/40 bg-rose-500/10'
+      : highlight === 'muted'
+      ? 'border-slate-600/60 bg-slate-800/60'
+      : 'border-slate-700 bg-slate-900/80';
+
+  const clickableClasses = onClick
+    ? 'cursor-pointer hover:bg-slate-900 transition'
+    : '';
+
+  return (
   <div
     onClick={onClick}
     role={onClick ? 'button' : undefined}
     tabIndex={onClick ? 0 : undefined}
-    className={`bg-slate-900/80 border border-slate-700 p-4 rounded-xl shadow-md ${
-      onClick ? 'cursor-pointer hover:bg-slate-900 transition' : ''
-    }`}
+    className={`${baseClasses} ${highlightClasses} ${clickableClasses}`}
   >
     <p className="text-gray-400 text-xs md:text-sm">{title}</p>
     <h2 className="text-2xl font-bold mt-2 text-white">{value}</h2>
     {subtext ? <p className="text-xs text-gray-400 mt-1">{subtext}</p> : null}
   </div>
-);
+  );
+};
 
 const Th = ({ children }) => (
   <th className="px-3 py-2 text-left text-xs font-semibold text-gray-300">
