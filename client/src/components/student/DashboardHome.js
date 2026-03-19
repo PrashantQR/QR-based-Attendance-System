@@ -46,7 +46,6 @@ const DashboardHome = () => {
         );
       }
 
-      setAttendanceRecords(attendanceArray);
       const backendSubjectSummary = Array.isArray(payload.subjectSummary)
         ? payload.subjectSummary
         : [];
@@ -60,22 +59,33 @@ const DashboardHome = () => {
           payload.subjectSummary
         );
       }
+      setAttendanceRecords(attendanceArray);
       setSubjectSummary(backendSubjectSummary);
-      const presentCount = attendanceArray.filter(
-        (a) => a.status === 'present'
-      ).length;
-      const lateCount = attendanceArray.filter((a) => a.status === 'late')
-        .length;
-      const totalCount = attendanceArray.length;
+
+      // Aggregate summary from subject-wise data for accurate totals
+      const totals = backendSubjectSummary.reduce(
+        (acc, item) => {
+          const totalSessions = Number(item.totalSessions || 0);
+          const present = Number(item.present || 0);
+          const late = Number(item.late || 0);
+          acc.totalSessions += totalSessions;
+          acc.presentDays += present;
+          acc.lateDays += late;
+          return acc;
+        },
+        { totalSessions: 0, presentDays: 0, lateDays: 0 }
+      );
+
+      const attendanceRate =
+        totals.totalSessions > 0
+          ? Math.round((totals.presentDays / totals.totalSessions) * 100)
+          : 0;
 
       setStats({
-        totalAttendance: totalCount,
-        presentDays: presentCount,
-        lateDays: lateCount,
-        attendanceRate:
-          totalCount > 0
-            ? Math.round((presentCount / totalCount) * 100)
-            : 0
+        totalAttendance: totals.totalSessions,
+        presentDays: totals.presentDays,
+        lateDays: totals.lateDays,
+        attendanceRate
       });
     } catch (error) {
       console.error('Error fetching student stats:', error);
