@@ -1,6 +1,13 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { FaQrcode, FaHistory, FaUser, FaTachometerAlt, FaClipboardList } from 'react-icons/fa';
+import {
+  FaQrcode,
+  FaHistory,
+  FaUser,
+  FaTachometerAlt,
+  FaClipboardList,
+  FaChartBar
+} from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Sidebar = ({ isOpen = false, onClose }) => {
@@ -11,6 +18,7 @@ const Sidebar = ({ isOpen = false, onClose }) => {
     { to: '/student', label: 'Dashboard', icon: FaTachometerAlt },
     { to: '/student/scan', label: 'Scan QR', icon: FaQrcode },
     { to: '/student/exam/scan', label: 'Exam', icon: FaClipboardList },
+    { to: '/student/results', label: 'Results', icon: FaChartBar },
     { to: '/student/my-attendance', label: 'My Attendance', icon: FaHistory },
     { to: '/profile', label: 'Profile', icon: FaUser }
   ];
@@ -21,6 +29,7 @@ const Sidebar = ({ isOpen = false, onClose }) => {
     { to: '/teacher/qr-generate', label: 'Generate QR', icon: FaQrcode },
     { to: '/teacher/attendance', label: 'View Attendance', icon: FaClipboardList },
     { to: '/teacher/exams', label: 'Exams', icon: FaClipboardList },
+    { to: '/teacher/results', label: 'Results', icon: FaChartBar },
     { to: '/profile', label: 'Profile', icon: FaUser }
   ];
 

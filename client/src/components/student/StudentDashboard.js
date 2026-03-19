@@ -8,6 +8,7 @@ import EvaluateInstructor from './EvaluateInstructor';
 import ExamScanner from './ExamScanner';
 import ExamTake from './ExamTake';
 import ExamResult from './ExamResult';
+import StudentResults from './StudentResults';
 
 const StudentDashboard = () => {
   return (
@@ -20,6 +21,7 @@ const StudentDashboard = () => {
         <Route path="/exam/scan" element={<ExamScanner />} />
         <Route path="/exam/take" element={<ExamTake />} />
         <Route path="/exam/result/:testId" element={<ExamResult />} />
+        <Route path="/results" element={<StudentResults />} />
       </Routes>
     </MainLayout>
   );
