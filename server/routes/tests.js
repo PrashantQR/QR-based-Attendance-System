@@ -148,21 +148,19 @@ router.post(
 
       if (req.file.originalname.toLowerCase().endsWith('.csv')) {
         const csvContent = req.file.buffer.toString('utf-8');
-        await new Promise((resolve, reject) => {
-          const parser = csvParse(csvContent, {
-            columns: true,
-            skip_empty_lines: true,
-            trim: true
-          });
-          parser.on('readable', () => {
-            let record;
-            // eslint-disable-next-line no-cond-assign
-            while ((record = parser.read())) {
-              rows.push(record);
+        rows = await new Promise((resolve, reject) => {
+          csvParse(
+            csvContent,
+            {
+              columns: true,
+              skip_empty_lines: true,
+              trim: true
+            },
+            (err, output) => {
+              if (err) return reject(err);
+              resolve(output || []);
             }
-          });
-          parser.on('error', reject);
-          parser.on('end', resolve);
+          );
         });
       } else {
         const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
