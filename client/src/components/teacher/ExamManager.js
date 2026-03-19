@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { QRCodeCanvas } from 'qrcode.react';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 
@@ -215,11 +216,25 @@ const ExamManager = () => {
               </button>
             </div>
             {qrPayload && (
-              <div className="mt-3 bg-slate-950/60 border border-slate-700 rounded-lg p-3 text-xs text-gray-300 break-words">
-                <p className="font-semibold mb-1 text-gray-200">QR Payload (encode this in a QR):</p>
-                <pre className="whitespace-pre-wrap text-[11px]">
-                  {JSON.stringify(qrPayload, null, 2)}
-                </pre>
+              <div className="mt-4 space-y-3">
+                <div className="flex justify-center">
+                  <div className="inline-block bg-white p-3 rounded-xl shadow-lg">
+                    <QRCodeCanvas
+                      value={JSON.stringify(qrPayload)}
+                      size={180}
+                      level="H"
+                      includeMargin
+                    />
+                  </div>
+                </div>
+                <div className="bg-slate-950/60 border border-slate-700 rounded-lg p-3 text-xs text-gray-300 break-words">
+                  <p className="font-semibold mb-1 text-gray-200">
+                    QR Payload (students scan this with Exam Scanner):
+                  </p>
+                  <pre className="whitespace-pre-wrap text-[11px]">
+                    {JSON.stringify(qrPayload, null, 2)}
+                  </pre>
+                </div>
               </div>
             )}
           </div>
