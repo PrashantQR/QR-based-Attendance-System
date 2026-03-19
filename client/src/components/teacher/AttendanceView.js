@@ -22,6 +22,7 @@ const AttendanceView = () => {
   const [sortOrder, setSortOrder] = useState('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
+  const [totalSessions, setTotalSessions] = useState(0);
 
   const selectedSubjectLabel =
     subjectFilter === 'all' ? 'All Subjects' : subjectFilter;
@@ -37,8 +38,16 @@ const AttendanceView = () => {
         `/attendance?date=${selectedDate}${subjectQuery}`
       );
 
-      const data = response.data?.data;
-      setAttendance(Array.isArray(data?.attendance) ? data.attendance : []);
+      const data = response.data?.data || {};
+      const safeAttendance = Array.isArray(data.attendance)
+        ? data.attendance
+        : [];
+      if (!Array.isArray(data.attendance) && data.attendance != null) {
+        // eslint-disable-next-line no-console
+        console.warn('Expected attendance array but got:', data.attendance);
+      }
+      setAttendance(safeAttendance);
+      setTotalSessions(Number(data.totalSessions || 0));
     } catch (error) {
       console.error('Error fetching attendance:', error);
       toast.error('Failed to fetch attendance data');
@@ -205,6 +214,8 @@ const AttendanceView = () => {
     );
   }
 
+  const hasSessions = totalSessions > 0;
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
       {/* Header */}
@@ -341,7 +352,11 @@ const AttendanceView = () => {
           <div className="flex gap-2">
             <button
               className="px-3 py-1.5 rounded-lg border border-sky-500 text-sky-400 text-xs font-medium flex items-center gap-1 hover:bg-sky-500/10"
-              onClick={() => window.print()}
+              onClick={() => {
+                if (!hasSessions) return;
+                window.print();
+              }}
+              disabled={!hasSessions}
             >
               <FaEye className="text-xs" />
               Print
@@ -349,8 +364,10 @@ const AttendanceView = () => {
             <button
               className="px-3 py-1.5 rounded-lg border border-emerald-500 text-emerald-400 text-xs font-medium flex items-center gap-1 hover:bg-emerald-500/10"
               onClick={() => {
+                if (!hasSessions) return;
                 toast.info('Export feature coming soon!');
               }}
+              disabled={!hasSessions}
             >
               <FaDownload className="text-xs" />
               Export
@@ -358,7 +375,15 @@ const AttendanceView = () => {
           </div>
         </div>
 
-        {paginatedAttendance.length > 0 ? (
+        {!hasSessions ? (
+          <div className="flex flex-col items-center justify-center py-8 text-gray-400 text-sm text-center">
+            <FaCalendarAlt size={40} className="mb-3 text-gray-500" />
+            <p>No session conducted on this date.</p>
+            <p className="mt-1 text-xs text-gray-500">
+              Check the selected date and subject above.
+            </p>
+          </div>
+        ) : paginatedAttendance.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-[980px] w-full text-sm text-gray-200">
               <thead className="bg-slate-800/90">
@@ -449,7 +474,7 @@ const AttendanceView = () => {
         ) : (
           <div className="flex flex-col items-center justify-center py-8 text-gray-400 text-sm text-center">
             <FaCalendarAlt size={40} className="mb-3 text-gray-500" />
-            <p>No session conducted or no attendance records found</p>
+            <p>No attendance records found for this session</p>
             <p className="mt-1 text-xs text-gray-500">
               Check the selected date and subject above.
             </p>

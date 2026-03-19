@@ -40,7 +40,7 @@ const DashboardHome = () => {
     try {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 30); // Last 30 days
-      
+
       const response = await api.get('/attendance/my-attendance', {
         params: {
           startDate: startDate.toISOString().split('T')[0],
@@ -48,17 +48,34 @@ const DashboardHome = () => {
         }
       });
 
-      const attendance = response.data.data;
-      setAttendanceRecords(attendance);
-      const presentCount = attendance.filter(a => a.status === 'present').length;
-      const lateCount = attendance.filter(a => a.status === 'late').length;
-      const totalCount = attendance.length;
+      const payload = response.data?.data || {};
+      const attendanceArray = Array.isArray(payload.attendance)
+        ? payload.attendance
+        : [];
+      if (!Array.isArray(payload.attendance) && payload.attendance != null) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          'Expected attendance array from /attendance/my-attendance but got:',
+          payload.attendance
+        );
+      }
+
+      setAttendanceRecords(attendanceArray);
+      const presentCount = attendanceArray.filter(
+        (a) => a.status === 'present'
+      ).length;
+      const lateCount = attendanceArray.filter((a) => a.status === 'late')
+        .length;
+      const totalCount = attendanceArray.length;
 
       setStats({
         totalAttendance: totalCount,
         presentDays: presentCount,
         lateDays: lateCount,
-        attendanceRate: totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0
+        attendanceRate:
+          totalCount > 0
+            ? Math.round((presentCount / totalCount) * 100)
+            : 0
       });
     } catch (error) {
       console.error('Error fetching student stats:', error);

@@ -62,21 +62,24 @@ const getSubjectWiseSummary = async (baseQuery) => {
 const getAttendanceForTeacherDate = async ({ teacherId, dateStr, subject }) => {
   const { startOfDay, endOfDay } = getUtcDateRange(dateStr);
 
-  const baseQuery = {
-    date: { $gte: startOfDay, $lte: endOfDay },
-    teacher: teacherId,
-    isDeleted: false
+  const qrFilter = {
+    generatedBy: teacherId,
+    generatedAt: { $gte: startOfDay, $lte: endOfDay }
   };
 
   if (subject && subject !== 'all') {
-    const qrCodes = await QRCodeModel.find({
-      subject,
-      generatedBy: teacherId
-    }).select('_id');
-
-    const qrIds = qrCodes.map((q) => q._id);
-    baseQuery.qrCode = { $in: qrIds };
+    qrFilter.subject = subject;
   }
+
+  const qrCodes = await QRCodeModel.find(qrFilter).select('_id');
+  const qrIds = qrCodes.map((q) => q._id);
+
+  const baseQuery = {
+    date: { $gte: startOfDay, $lte: endOfDay },
+    teacher: teacherId,
+    isDeleted: false,
+    qrCode: { $in: qrIds }
+  };
 
   const records = await Attendance.find(baseQuery)
     .populate('student', 'name studentId department year mobileNumber')
@@ -101,7 +104,7 @@ const getAttendanceForTeacherDate = async ({ teacherId, dateStr, subject }) => {
 
   const subjectSummary = await getSubjectWiseSummary(baseQuery);
 
-  return { attendance: records, stats, subjectSummary };
+  return { attendance: records, stats, subjectSummary, totalSessions: qrCodes.length };
 };
 
 // @desc    Get attendance for a date (and optional subject)
@@ -112,7 +115,7 @@ router.get('/', protect, authorize('teacher'), async (req, res) => {
     const dateStr = req.query.date || new Date().toISOString().split('T')[0];
     const subject = req.query.subject;
 
-    const { attendance, stats, subjectSummary } =
+    const { attendance, stats, subjectSummary, totalSessions } =
       await getAttendanceForTeacherDate({
         teacherId: req.user._id,
         dateStr,
@@ -125,7 +128,8 @@ router.get('/', protect, authorize('teacher'), async (req, res) => {
         date: dateStr,
         attendance,
         stats,
-        subjectSummary
+        subjectSummary,
+        totalSessions
       }
     });
   } catch (error) {
@@ -236,7 +240,7 @@ router.get('/daily', protect, authorize('teacher'), async (req, res) => {
     const dateStr = req.query.date || new Date().toISOString().split('T')[0];
     const subject = req.query.subject;
 
-    const { attendance, stats } = await getAttendanceForTeacherDate({
+    const { attendance, stats, totalSessions } = await getAttendanceForTeacherDate({
       teacherId: req.user._id,
       dateStr,
       subject
@@ -247,7 +251,8 @@ router.get('/daily', protect, authorize('teacher'), async (req, res) => {
       data: {
         date: dateStr,
         attendance,
-        stats
+        stats,
+        totalSessions
       }
     });
   } catch (error) {
