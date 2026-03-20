@@ -15,6 +15,7 @@ import ExamPreview from './exam/ExamPreview';
 import ExamInstructions from './exam/ExamInstructions';
 import ExamStart from './exam/ExamStart';
 import ExamActive from './exam/ExamActive';
+import ExamSummary from './exam/ExamSummary';
 
 const StudentDashboard = () => {
   return (
@@ -35,6 +36,7 @@ const StudentDashboard = () => {
         <Route path="/exam/start/:testId" element={<ExamStart />} />
         <Route path="/exam/take" element={<ExamTake />} />
         <Route path="/exam/result/:testId" element={<ExamResult />} />
+        <Route path="/exam/summary/:testId" element={<ExamSummary />} />
         <Route path="/results" element={<StudentResults />} />
         <Route path="/results/:testId" element={<TestResultDetails />} />
       </Routes>

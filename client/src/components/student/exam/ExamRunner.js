@@ -38,6 +38,7 @@ const ExamRunner = ({
   // Keep latest answers/questions inside callbacks (timer/anti-cheat)
   const answersRef = useRef(answers);
   const questionsRef = useRef(questions);
+  const markedForReviewRef = useRef(markedForReview);
 
   useEffect(() => {
     answersRef.current = answers;
@@ -46,6 +47,10 @@ const ExamRunner = ({
   useEffect(() => {
     questionsRef.current = questions;
   }, [questions]);
+
+  useEffect(() => {
+    markedForReviewRef.current = markedForReview;
+  }, [markedForReview]);
 
   const endTimeMs = useMemo(() => {
     const startMs = startedAt ? new Date(startedAt).getTime() : Date.now();
@@ -126,7 +131,40 @@ const ExamRunner = ({
       });
 
       toast.success(auto ? 'Time up! Exam submitted' : 'Exam submitted');
-      navigate(`/student/exam/result/${testId}`, { replace: true });
+
+      // Post-exam summary (local-only; can be extended later with score).
+      const qs = Array.isArray(questionsRef.current) ? questionsRef.current : [];
+      const totalQuestions = qs.length;
+
+      let attempted = 0;
+      for (const q of qs) {
+        if (answersRef.current?.[q._id]) attempted += 1;
+      }
+
+      const notAttempted = Math.max(0, totalQuestions - attempted);
+      const reviewCount = Array.isArray(markedForReviewRef.current)
+        ? markedForReviewRef.current.length
+        : 0;
+
+      const summary = {
+        totalQuestions,
+        attempted,
+        notAttempted,
+        reviewCount
+      };
+
+      // Fallback if user refreshes summary page.
+      try {
+        localStorage.setItem(
+          `exam_summary_${String(testId)}`,
+          JSON.stringify(summary)
+        );
+      } catch (_) {}
+
+      navigate(`/student/exam/summary/${testId}`, {
+        replace: true,
+        state: summary
+      });
     } catch (error) {
       console.error('Exam submit error:', error);
       toast.error(
