@@ -181,15 +181,26 @@ const DashboardHome = () => {
             ? attendanceRes.data.data.attendance
             : [];
 
+          // QR scans can produce `present` or `late` statuses.
+          // "Present Students" in this UI should match the dashboard count
+          // which counts ONLY `status === 'present'` (not late).
           const scannedIds = new Set(
             attendanceList.map((record) =>
               String(record.student?._id || record.student)
             )
           );
 
+          const presentIds = new Set(
+            attendanceList
+              .filter((r) => r?.status === 'present')
+              .map((record) =>
+                String(record.student?._id || record.student)
+              )
+          );
+
           if (mode === 'present') {
             setStudents(
-              allStudents.filter((s) => scannedIds.has(String(s._id)))
+              allStudents.filter((s) => presentIds.has(String(s._id)))
             );
           } else if (mode === 'absent') {
             setStudents(
