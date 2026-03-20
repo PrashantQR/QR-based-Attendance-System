@@ -33,14 +33,18 @@ body {
 /* Date picker dark UI compatibility (calendar icon visibility) */
 input[type='date'] {
   color-scheme: dark;
+  /* Give the native calendar button space so it doesn't blend/clip */
+  padding-right: 2.75rem !important;
 }
 
 input[type='date']::-webkit-calendar-picker-indicator {
   /* Make the native calendar icon readable on dark backgrounds */
-  filter: invert(1) brightness(2);
+  opacity: 1;
+  filter: invert(1) brightness(6) contrast(1.1);
   cursor: pointer;
 }
 
 input[type='date']::-webkit-calendar-picker-indicator:hover {
-  filter: invert(1) brightness(3);
+  opacity: 1;
+  filter: invert(1) brightness(7) contrast(1.1);
 }
