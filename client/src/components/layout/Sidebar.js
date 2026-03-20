@@ -17,7 +17,7 @@ const Sidebar = ({ isOpen = false, onClose }) => {
   const studentMenu = [
     { to: '/student', label: 'Dashboard', icon: FaTachometerAlt },
     { to: '/student/scan', label: 'Scan QR', icon: FaQrcode },
-    { to: '/student/exam/scan', label: 'Exam', icon: FaClipboardList },
+    { to: '/student/exam', label: 'Exam', icon: FaClipboardList },
     { to: '/student/results', label: 'Results', icon: FaChartBar },
     { to: '/student/my-attendance', label: 'My Attendance', icon: FaHistory },
     { to: '/profile', label: 'Profile', icon: FaUser }

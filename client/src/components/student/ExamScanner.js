@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaCamera, FaQrcode } from 'react-icons/fa';
-import api from '../../utils/api';
 import { toast } from 'react-toastify';
 
 const ExamScanner = () => {
@@ -60,28 +59,24 @@ const ExamScanner = () => {
         return;
       }
 
-      setLoading(true);
-      const res = await api.post('/exam/start', {
-        testId: payload.testId,
-        token: payload.token
-      });
+      // Store session so Start step can validate with the QR token.
+      try {
+        localStorage.setItem(
+          `exam_session_${String(payload.testId)}`,
+          JSON.stringify({
+            token: payload.token,
+            exp: payload.exp || null
+          })
+        );
+      } catch (_) {}
 
-      const data = res.data?.data;
-      if (!data?.testId || !Array.isArray(data?.questions)) {
-        toast.error('Failed to start exam');
-        scannedRef.current = false;
-        setScanning(true);
-        return;
-      }
+      // Stop the camera immediately after successful scan.
+      await stopCurrentScanner();
 
-      navigate('/student/exam/take', {
+      navigate(`/student/exam/preview/${String(payload.testId)}`, {
         state: {
-          testId: data.testId,
-          title: data.title,
-          description: data.description,
-          durationMinutes: data.durationMinutes,
-          startedAt: data.startedAt,
-          questions: data.questions
+          token: payload.token,
+          exp: payload.exp || null
         }
       });
     } catch (error) {
@@ -119,9 +114,11 @@ const ExamScanner = () => {
     ];
 
     if (fatalHints.some((h) => errString.includes(h))) {
-      toast.error(
-        'Camera error: ' + (errString || 'permission or device issue')
-      );
+      const msg = /NotAllowedError/i.test(errString)
+        ? 'Camera permission required'
+        : 'Camera error: ' + (errString || 'permission or device issue');
+      setBlockedMessage(msg);
+      toast.error(msg);
       setScanning(false);
     }
   };

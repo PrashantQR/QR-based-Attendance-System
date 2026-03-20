@@ -310,5 +310,155 @@ router.get(
   }
 );
 
+// Student: exam preview metadata before starting attempt
+router.get(
+  '/preview/:testId',
+  protect,
+  authorize('student'),
+  async (req, res) => {
+    try {
+      const { testId } = req.params;
+      const now = new Date();
+
+      const test = await Test.findById(testId)
+        .populate('subjectId', 'name')
+        .select('title status durationMinutes qrExpiresAt subjectId questions');
+
+      if (!test) {
+        return res.status(404).json({
+          success: false,
+          message: 'Test not found',
+          data: {}
+        });
+      }
+
+      // Subject-wise protection: students can only preview tests for their subjects
+      if (test.subjectId && test.subjectId.name) {
+        const allowed = Array.isArray(req.user.subjects)
+          ? req.user.subjects.includes(test.subjectId.name)
+          : false;
+        if (!allowed) {
+          return res.status(403).json({
+            success: false,
+            message:
+              'You are not allowed to access this test for your subjects',
+            data: {}
+          });
+        }
+      }
+
+      const totalQuestions = Array.isArray(test.questions)
+        ? test.questions.length
+        : 0;
+
+      const isActiveAndNotExpired = Boolean(
+        test.status === 'active' &&
+          test.qrExpiresAt &&
+          test.qrExpiresAt instanceof Date &&
+          test.qrExpiresAt > now
+      );
+
+      return res.json({
+        success: true,
+        data: {
+          testId: test._id,
+          testTitle: test.title,
+          subjectName: test.subjectId?.name || '',
+          durationMinutes: Number(test.durationMinutes || 0),
+          totalQuestions,
+          status: isActiveAndNotExpired ? 'active' : 'expired',
+          // keep original server status for conditional logic
+          serverStatus: test.status,
+          expiresAt: test.qrExpiresAt || null
+        }
+      });
+    } catch (error) {
+      console.error('Exam preview error:', error);
+      return res.status(500).json({
+        success: false,
+        message: error?.message || 'An error occurred while fetching preview',
+        data: {}
+      });
+    }
+  }
+);
+
+// Student: resume an active attempt (basic)
+router.get(
+  '/active',
+  protect,
+  authorize('student'),
+  async (req, res) => {
+    try {
+      // Active attempt = started but not submitted yet
+      const attempt = await TestAttempt.findOne({
+        student: req.user._id,
+        submittedAt: { $exists: false }
+      })
+        .sort({ startedAt: -1 })
+        .populate({
+          path: 'test',
+          populate: { path: 'subjectId', select: 'name' },
+          select:
+            'title status durationMinutes qrExpiresAt subjectId questions'
+        });
+
+      if (!attempt?.test) {
+        return res.json({
+          success: true,
+          data: null,
+          message: 'No active attempt found'
+        });
+      }
+
+      const test = attempt.test;
+      const totalQuestions = Array.isArray(test.questions)
+        ? test.questions.length
+        : 0;
+      const now = new Date();
+      const isActiveAndNotExpired = Boolean(
+        test.status === 'active' &&
+          test.qrExpiresAt &&
+          test.qrExpiresAt instanceof Date &&
+          test.qrExpiresAt > now
+      );
+
+      // Only safe question fields; correctAnswer is select:false by schema
+      const safeQuestions = (test.questions || []).map((q) => ({
+        _id: q._id,
+        text: q.text,
+        optionA: q.optionA,
+        optionB: q.optionB,
+        optionC: q.optionC,
+        optionD: q.optionD
+      }));
+
+      return res.json({
+        success: true,
+        data: {
+          attemptId: attempt._id,
+          testId: test._id,
+          testTitle: test.title,
+          subjectName: test.subjectId?.name || '',
+          durationMinutes: Number(test.durationMinutes || 0),
+          totalQuestions,
+          startedAt: attempt.startedAt,
+          status: isActiveAndNotExpired ? 'active' : 'expired',
+          serverStatus: test.status,
+          expiresAt: test.qrExpiresAt || null,
+          answers: attempt.answers || []
+        }
+      });
+    } catch (error) {
+      console.error('Exam active error:', error);
+      return res.status(500).json({
+        success: false,
+        message: error?.message || 'An error occurred while fetching active attempt',
+        data: {}
+      });
+    }
+  }
+);
+
 module.exports = router;
 

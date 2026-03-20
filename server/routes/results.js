@@ -246,12 +246,13 @@ router.get(
       const totalQuestions = Array.isArray(test.questions) ? test.questions.length : 0;
 
       const now = new Date();
-      const isExpired = Boolean(
+      const isActiveAndNotExpired = Boolean(
         test.status === 'active' &&
           test.qrExpiresAt &&
           test.qrExpiresAt instanceof Date &&
-          test.qrExpiresAt <= now
+          test.qrExpiresAt > now
       );
+      const isExpired = !isActiveAndNotExpired;
       const isPublished = test.status === 'published';
 
       const testMeta = {
