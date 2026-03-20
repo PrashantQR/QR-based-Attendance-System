@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
@@ -7,12 +7,28 @@ const ExamManager = () => {
   const [subjects, setSubjects] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState('');
   const [subjectsLoading, setSubjectsLoading] = useState(false);
+  const [tests, setTests] = useState([]);
+  const [testsLoading, setTestsLoading] = useState(false);
   const [title, setTitle] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(10);
   const [file, setFile] = useState(null);
   const [testId, setTestId] = useState('');
   const [loading, setLoading] = useState(false);
   const [qrPayload, setQrPayload] = useState(null);
+
+  const selectedSubjectName = useMemo(() => {
+    if (!Array.isArray(subjects) || !selectedSubject) return '';
+    const found = subjects.find((s) => String(s._id) === String(selectedSubject));
+    return found?.name || '';
+  }, [subjects, selectedSubject]);
+
+  const filteredTests = useMemo(() => {
+    if (!Array.isArray(tests)) return [];
+    if (!selectedSubjectName) return [];
+    return tests.filter(
+      (t) => String(t.subjectName || '') === String(selectedSubjectName)
+    );
+  }, [tests, selectedSubjectName]);
 
   useEffect(() => {
     const fetchSubjects = async () => {
@@ -37,6 +53,29 @@ const ExamManager = () => {
     fetchSubjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const fetchTests = async () => {
+      if (!selectedSubjectName) {
+        setTests([]);
+        return;
+      }
+      setTestsLoading(true);
+      try {
+        const res = await api.get('/tests');
+        const list = Array.isArray(res.data) ? res.data : [];
+        setTests(list);
+      } catch (error) {
+        console.error('Fetch teacher tests error:', error);
+        toast.error(error.response?.data?.message || 'Failed to fetch tests');
+        setTests([]);
+      } finally {
+        setTestsLoading(false);
+      }
+    };
+
+    fetchTests();
+  }, [selectedSubjectName]);
 
   const handleImport = async (e) => {
     e.preventDefault();
@@ -215,15 +254,31 @@ const ExamManager = () => {
           <div className="space-y-3">
             <div>
               <label className="block text-xs text-gray-400 mb-1">
-                Current Test ID
+                Select Test (filtered by subject)
               </label>
-              <input
-                type="text"
-                className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+              <select
                 value={testId}
-                onChange={(e) => setTestId(e.target.value)}
-                placeholder="After import, this is set automatically"
-              />
+                onChange={(e) => {
+                  setTestId(e.target.value);
+                  setQrPayload(null);
+                }}
+                className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+                disabled={testsLoading || !filteredTests.length}
+              >
+                {testsLoading && (
+                  <option value="">Loading tests…</option>
+                )}
+                {!testsLoading && !filteredTests.length && (
+                  <option value="" disabled>
+                    No tests for this subject yet
+                  </option>
+                )}
+                {filteredTests.map((t) => (
+                  <option key={String(t._id)} value={String(t._id)}>
+                    {t.title} ({t.status})
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
               <button
