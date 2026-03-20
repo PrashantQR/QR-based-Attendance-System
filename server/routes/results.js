@@ -215,9 +215,12 @@ router.get(
     try {
       const { testId } = req.params;
 
+      // NOTE: `correctAnswer` is `select: false` in the Question schema,
+      // so we must explicitly opt-in (+questions.correctAnswer).
       const test = await Test.findById(testId)
         .populate('subjectId', 'name')
-        .select('title status questions subjectId +questions.correctAnswer');
+        .select('title status questions subjectId')
+        .select('+questions.correctAnswer');
       if (!test) {
         return res.status(404).json({ success: false, message: 'Test not found', data: {} });
       }
