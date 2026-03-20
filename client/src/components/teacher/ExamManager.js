@@ -158,8 +158,17 @@ const ExamManager = () => {
     }
     setLoading(true);
     try {
+      // Use the selected test's duration to keep QR valid long enough
+      // for multiple students to start (instead of a fixed short window).
+      const selectedTest =
+        tests.find((t) => String(t._id) === String(testId)) ||
+        filteredTests.find((t) => String(t._id) === String(testId)) ||
+        null;
+      const minutes = Number(selectedTest?.durationMinutes || durationMinutes || 10);
+      const expiresInSeconds = Math.max(120, Math.round(minutes * 60 + 60)); // +60s buffer
+
       const res = await api.post(`/tests/${testId}/qr`, {
-        expiresInSeconds: 120
+        expiresInSeconds
       });
       setQrPayload(res.data?.data?.qrPayload || null);
       toast.success(res.data?.message || 'Exam QR generated');

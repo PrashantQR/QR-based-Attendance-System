@@ -78,7 +78,7 @@ router.get(
 
       const tests = await Test.find(query)
         .populate('subjectId', 'name')
-        .select('_id title status qrExpiresAt subjectId')
+        .select('_id title status qrExpiresAt durationMinutes subjectId')
         .sort({ createdAt: -1 });
 
       // Student should only see published tests for their assigned subjects.
@@ -110,7 +110,8 @@ router.get(
             title: t.title,
             status: effectiveStatus,
             subjectName: t.subjectId?.name || '',
-            subjectId: t.subjectId?._id || null
+            subjectId: t.subjectId?._id || null,
+            durationMinutes: Number(t.durationMinutes || 0)
           };
         });
 

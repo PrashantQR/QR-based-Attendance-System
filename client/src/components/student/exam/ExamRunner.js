@@ -22,6 +22,9 @@ const ExamRunner = ({
   const navigate = useNavigate();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState(() => ({ ...initialAnswers }));
+  const [markedForReview, setMarkedForReview] = useState([]);
+  const [visitedQuestions, setVisitedQuestions] = useState({});
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [timeLeftSeconds, setTimeLeftSeconds] = useState(
     Number(durationMinutes || 0) * 60
   );
@@ -59,6 +62,14 @@ const ExamRunner = ({
     }
     return c;
   }, [questions, answers]);
+
+  useEffect(() => {
+    const qid = currentQuestion?._id;
+    if (!qid) return;
+    const key = String(qid);
+    setVisitedQuestions((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex]);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -131,9 +142,26 @@ const ExamRunner = ({
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
 
+  const handleSaveAnswer = () => {
+    // Answers are already stored on selection in this UI;
+    // this button is for UX parity with real exam platforms.
+    toast.success('Answer saved');
+  };
+
+  const handleMarkForReview = () => {
+    const qid = currentQuestion?._id;
+    if (!qid) return;
+    const key = String(qid);
+    setMarkedForReview((prev) =>
+      prev.includes(key) ? prev.filter((x) => x !== key) : [...prev, key]
+    );
+  };
+
   const progressPercent = totalQuestions
     ? Math.round((answeredCount / totalQuestions) * 100)
     : 0;
+
+  const currentQuestionId = currentQuestion?._id ? String(currentQuestion._id) : '';
 
   return (
     <div className="space-y-6">
@@ -226,6 +254,20 @@ const ExamRunner = ({
                 >
                   Previous
                 </button>
+                            <button
+                              type="button"
+                              disabled={submitting || !currentQuestion}
+                              onClick={handleMarkForReview}
+                              className={`px-4 py-2 rounded-lg border text-sm font-medium disabled:opacity-60 ${
+                                markedForReview.includes(currentQuestionId)
+                                  ? 'border-yellow-300/60 bg-yellow-400/15 text-yellow-200 hover:bg-yellow-400/20'
+                                  : 'border-white/10 bg-white/5 text-gray-200 hover:bg-white/10'
+                              }`}
+                            >
+                              {markedForReview.includes(currentQuestionId)
+                                ? 'Unmark Review'
+                                : 'Mark for Review'}
+                            </button>
                 <button
                   type="button"
                   disabled={currentIndex === totalQuestions - 1 || submitting}
@@ -236,36 +278,104 @@ const ExamRunner = ({
                 >
                   Next
                 </button>
+
+                            <button
+                              type="button"
+                              disabled={submitting || !currentQuestion}
+                              onClick={handleSaveAnswer}
+                              className="px-4 py-2 rounded-lg border border-emerald-400/30 bg-emerald-400/10 text-emerald-200 text-sm font-medium hover:bg-emerald-400/20 disabled:opacity-60"
+                            >
+                              Save Answer
+                            </button>
               </div>
 
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={() => submitExam(false)}
-                className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-900 text-sm font-semibold disabled:opacity-60"
-              >
-                {submitting ? 'Submitting...' : 'Submit Exam'}
-              </button>
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              disabled={submitting}
+                              onClick={() => setShowSubmitConfirm(true)}
+                              className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-900 text-sm font-semibold disabled:opacity-60"
+                            >
+                              {submitting ? 'Submitting...' : 'Submit Exam'}
+                            </button>
+                          </div>
             </div>
+
+                        {showSubmitConfirm && (
+                          <div
+                            className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+                            role="dialog"
+                            aria-modal="true"
+                          >
+                            <div className="w-full max-w-md bg-[#0f172a] border border-white/10 rounded-xl p-5 space-y-4">
+                              <h3 className="text-white font-semibold text-lg">
+                                Confirm Submit
+                              </h3>
+                              <p className="text-sm text-gray-300">
+                                Are you sure you want to submit this exam? You
+                                cannot change answers after submitting.
+                              </p>
+                              <div className="flex gap-2 justify-end">
+                                <button
+                                  type="button"
+                                  disabled={submitting}
+                                  onClick={() => setShowSubmitConfirm(false)}
+                                  className="px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-200 hover:bg-white/10 disabled:opacity-60"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={submitting}
+                                  onClick={() => {
+                                    setShowSubmitConfirm(false);
+                                    submitExam(false);
+                                  }}
+                                  className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-900 text-sm font-semibold disabled:opacity-60"
+                                >
+                                  {submitting ? 'Submitting...' : 'Yes, Submit'}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
             <div>
               <div className="text-xs text-gray-400 mb-2">Question Palette</div>
               <div className="flex flex-wrap gap-2">
                 {questions.map((q, idx) => {
-                  const answered = Boolean(answers[q._id]);
+                              const qid = String(q._id);
+                              const isVisited = Boolean(visitedQuestions[qid]);
+                              const answered = Boolean(answers[q._id]);
+                              const isMarked = markedForReview.includes(qid);
                   const isActive = idx === currentIndex;
+
+                              const paletteClass = (() => {
+                                if (!isActive && !isVisited) {
+                                  return 'bg-transparent border-white/10 text-gray-400 hover:bg-white/5';
+                                }
+                                if (!isActive && isMarked) {
+                                  return 'bg-yellow-400/15 border-yellow-300 text-yellow-200 hover:bg-yellow-400/20';
+                                }
+                                if (!isActive && answered) {
+                                  return 'bg-white/5 border-white/10 text-gray-200 hover:bg-white/10';
+                                }
+                                if (!isActive && isVisited && !answered) {
+                                  return 'bg-rose-500/15 border-rose-400 text-rose-200 hover:bg-rose-500/20';
+                                }
+                                return '';
+                              })();
+
                   return (
                     <button
                       key={q._id}
                       type="button"
                       onClick={() => setCurrentIndex(idx)}
-                      className={`w-9 h-9 rounded-lg border text-sm font-semibold transition ${
-                        isActive
-                          ? 'bg-emerald-400/15 border-emerald-300 text-emerald-200'
-                          : answered
-                          ? 'bg-white/5 border-white/10 text-gray-200 hover:bg-white/10'
-                          : 'bg-transparent border-white/10 text-gray-400 hover:bg-white/5'
-                      }`}
+                                  className={`w-9 h-9 rounded-lg border text-sm font-semibold transition ${
+                                    isActive
+                                      ? 'bg-emerald-400/15 border-emerald-300 text-emerald-200'
+                                      : paletteClass
+                                  }`}
                       aria-label={`Go to question ${idx + 1}`}
                     >
                       {idx + 1}
