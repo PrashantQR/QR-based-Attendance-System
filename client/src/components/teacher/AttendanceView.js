@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { FaCalendarAlt, FaTrash, FaDownload, FaEye } from 'react-icons/fa';
@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const AttendanceView = () => {
   const { user } = useAuth();
+  const dateInputRef = useRef(null);
   const [attendance, setAttendance] = useState([]);
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split('T')[0]
@@ -289,13 +290,28 @@ const AttendanceView = () => {
                 Select Date
               </span>
             </label>
-            <input
-              type="date"
-              id="date"
-              className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-            />
+            <div className="relative">
+              <input
+                ref={dateInputRef}
+                type="date"
+                id="date"
+                className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  dateInputRef.current?.showPicker?.() ||
+                  dateInputRef.current?.click()
+                }
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-white pointer-events-auto"
+                aria-label="Open calendar"
+                title="Open calendar"
+              >
+                <FaCalendarAlt />
+              </button>
+            </div>
           </div>
           <div>
             <label

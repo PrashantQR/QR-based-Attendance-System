@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -20,6 +20,7 @@ import {
 const DashboardHome = () => {
   const { isAuthenticated, loading: authLoading, user, logout } = useAuth();
   const navigate = useNavigate();
+  const dateInputRef = useRef(null);
   const [stats, setStats] = useState({
     totalSessions: 0,
     totalStudents: 0,
@@ -526,12 +527,43 @@ const DashboardHome = () => {
             <label className="block text-xs font-semibold text-gray-400 mb-2">
               Select Date
             </label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
-            />
+            <div className="relative">
+              <input
+                ref={dateInputRef}
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+              />
+
+              <button
+                type="button"
+                onClick={() =>
+                  dateInputRef.current?.showPicker?.() ||
+                  dateInputRef.current?.click()
+                }
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/90 hover:text-white pointer-events-auto"
+                aria-label="Open calendar"
+                title="Open calendar"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
         {!selectedSubject && (
