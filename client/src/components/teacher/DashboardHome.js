@@ -814,7 +814,16 @@ const DashboardHome = () => {
                       </div>
 
                       <div className="mt-3 flex justify-center">
-                        <QRCodeCanvas value={String(qr.code || '')} size={110} level="H" />
+                        <div className="bg-white p-4 rounded-lg flex items-center justify-center">
+                          <QRCodeCanvas
+                            value={String(qr.code || '')}
+                            size={280}
+                            level="H"
+                            includeMargin
+                            bgColor="#ffffff"
+                            fgColor="#000000"
+                          />
+                        </div>
                       </div>
                     </div>
                   );

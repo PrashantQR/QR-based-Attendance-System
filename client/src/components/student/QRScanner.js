@@ -269,7 +269,11 @@ const QRScanner = () => {
       scannerRef.current = new Html5Qrcode('qr-reader');
       await scannerRef.current.start(
         cameraConfig,
-        { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+        {
+          fps: 15,
+          qrbox: { width: 320, height: 320 },
+          aspectRatio: 1.0
+        },
         handleScan,
         handleError
       );
