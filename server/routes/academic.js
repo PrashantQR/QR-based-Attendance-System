@@ -119,7 +119,36 @@ router.get(
         subjects = Array.from(map.values());
       }
 
-      // 3) Ensure stable output
+      // 3) Fallback: if DB has no Subject docs for this teacher at all,
+      // auto-provision based on teacher.subjects (stored as names in User).
+      // This prevents empty dropdowns when teachers selected "standard"
+      // subjects during registration but Subject documents weren't created.
+      if (subjects.length === 0 && assignedNames.length > 0) {
+        const teacherCourse = req.user.course;
+        const teacherSemester = req.user.semester;
+
+        // Only auto-create when we have enough info.
+        if (teacherCourse && teacherSemester) {
+          const created = await Promise.all(
+            assignedNames.map(async (subjectName) => {
+              const normalizedName = String(subjectName || '').trim();
+              if (!normalizedName) return null;
+
+              const doc = await Subject.findOneAndUpdate(
+                { name: normalizedName, course: teacherCourse, semester: teacherSemester },
+                { $setOnInsert: { createdBy: req.user._id } },
+                { upsert: true, new: true }
+              );
+
+              return doc;
+            })
+          );
+
+          subjects = created.filter(Boolean);
+        }
+      }
+
+      // 4) Ensure stable output
       subjects = subjects.map((s) => ({
         _id: s._id,
         name: s.name,
