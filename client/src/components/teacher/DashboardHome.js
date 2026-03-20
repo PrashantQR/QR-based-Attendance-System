@@ -9,7 +9,12 @@ import {
   Bar,
   XAxis,
   YAxis,
-  Tooltip
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line
 } from 'recharts';
 
 const DashboardHome = () => {
@@ -43,6 +48,7 @@ const DashboardHome = () => {
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [evaluationStats, setEvaluationStats] = useState(null);
   const [evaluationStatsLoading, setEvaluationStatsLoading] = useState(false);
+  const [feedbackCourseFilter, setFeedbackCourseFilter] = useState('all');
 
   const [showQRModal, setShowQRModal] = useState(false);
   const [qrData, setQrData] = useState([]);
@@ -348,6 +354,121 @@ const DashboardHome = () => {
     : `${stats.activeQrCount || 0} active`;
   const latestFeedbacks = feedbacks.slice(0, 5);
 
+  const chartFeedbacks = useMemo(() => {
+    if (feedbackCourseFilter === 'all') return feedbacks || [];
+    return (feedbacks || []).filter(
+      (f) => String(f.course || '') === String(feedbackCourseFilter)
+    );
+  }, [feedbacks, feedbackCourseFilter]);
+
+  const feedbackCourseOptions = useMemo(() => {
+    const set = new Set((feedbacks || []).map((f) => f.course).filter(Boolean));
+    return Array.from(set).sort((a, b) => String(a).localeCompare(String(b)));
+  }, [feedbacks]);
+
+  const subjectPerformanceData = useMemo(() => {
+    const list = chartFeedbacks || [];
+    if (!list.length) return [];
+
+    const map = new Map();
+    for (const f of list) {
+      const subject = f.course || '';
+      if (!subject) continue;
+
+      const prev = map.get(subject) || { sum: 0, count: 0 };
+      prev.sum += Number(f.averageRating || 0);
+      prev.count += 1;
+      map.set(subject, prev);
+    }
+
+    return Array.from(map.entries())
+      .map(([subject, v]) => ({
+        subject,
+        rating: Number((v.sum / Math.max(1, v.count)).toFixed(2))
+      }))
+      .sort((a, b) => (a.rating < b.rating ? 1 : -1));
+  }, [chartFeedbacks]);
+
+  const ratingDistributionData = useMemo(() => {
+    const list = chartFeedbacks || [];
+    const n = list.length || 0;
+    if (!n) return [];
+
+    let excellent = 0;
+    let average = 0;
+    let poor = 0;
+
+    for (const f of list) {
+      const r = Number(f.averageRating || 0);
+      if (r >= 4) excellent += 1;
+      else if (r >= 2) average += 1;
+      else poor += 1;
+    }
+
+    return [
+      { name: 'Excellent (4-5)', value: excellent },
+      { name: 'Average (2-3)', value: average },
+      { name: 'Poor (0-2)', value: poor }
+    ];
+  }, [chartFeedbacks]);
+
+  const feedbackTrendData = useMemo(() => {
+    const list = chartFeedbacks || [];
+    if (!list.length) return [];
+
+    const map = new Map();
+    for (const f of list) {
+      const d = f.createdAt ? new Date(f.createdAt) : null;
+      if (!d) continue;
+      const key = d.toISOString().slice(0, 10);
+      const prev = map.get(key) || { sum: 0, count: 0, date: d };
+      prev.sum += Number(f.averageRating || 0);
+      prev.count += 1;
+      map.set(key, prev);
+    }
+
+    const arr = Array.from(map.entries())
+      .map(([key, v]) => ({
+        key,
+        label: new Date(key).toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'short'
+        }),
+        rating: Number((v.sum / Math.max(1, v.count)).toFixed(2))
+      }))
+      .sort((a, b) => (a.key < b.key ? -1 : 1));
+
+    // last 7 points
+    return arr.slice(-7);
+  }, [chartFeedbacks]);
+
+  const getFeedbackColor = (value) => {
+    const v = Number(value || 0);
+    if (v >= 4) return 'bg-green-400';
+    if (v >= 3) return 'bg-yellow-400';
+    return 'bg-rose-400';
+  };
+
+  const RatingBar = ({ label, value }) => {
+    const v = Number(value || 0);
+    const percent = Math.max(0, Math.min(100, (v / 5) * 100));
+    const colorClass = getFeedbackColor(v);
+    return (
+      <div className="mb-1 hover:brightness-125 transition">
+        <div className="flex justify-between text-[11px] text-gray-400 mb-1">
+          <span>{label}</span>
+          <span className="text-white">{v}/5</span>
+        </div>
+        <div className="w-full h-2 bg-gray-700 rounded overflow-hidden">
+          <div
+            className={`h-2 rounded transition-all duration-500 ${colorClass}`}
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header / context */}
@@ -652,38 +773,28 @@ const DashboardHome = () => {
                     </div>
                   </div>
 
-                  {/* Ratings Grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs text-gray-300">
-                    <div>
-                      <div className="text-gray-400">Teaching:</div>
-                      <b className="text-white">
-                        {f.ratings?.teachingQuality ?? '—'}
-                      </b>
-                    </div>
-                    <div>
-                      <div className="text-gray-400">Communication:</div>
-                      <b className="text-white">
-                        {f.ratings?.communication ?? '—'}
-                      </b>
-                    </div>
-                    <div>
-                      <div className="text-gray-400">Interaction:</div>
-                      <b className="text-white">
-                        {f.ratings?.classInteraction ?? '—'}
-                      </b>
-                    </div>
-                    <div>
-                      <div className="text-gray-400">Knowledge:</div>
-                      <b className="text-white">
-                        {f.ratings?.subjectKnowledge ?? '—'}
-                      </b>
-                    </div>
-                    <div>
-                      <div className="text-gray-400">Doubt Solving:</div>
-                      <b className="text-white">
-                        {f.ratings?.doubtSolving ?? '—'}
-                      </b>
-                    </div>
+                  {/* Rating Bars */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    <RatingBar
+                      label="Teaching"
+                      value={f.ratings?.teachingQuality ?? 0}
+                    />
+                    <RatingBar
+                      label="Communication"
+                      value={f.ratings?.communication ?? 0}
+                    />
+                    <RatingBar
+                      label="Interaction"
+                      value={f.ratings?.classInteraction ?? 0}
+                    />
+                    <RatingBar
+                      label="Knowledge"
+                      value={f.ratings?.subjectKnowledge ?? 0}
+                    />
+                    <RatingBar
+                      label="Doubt Solving"
+                      value={f.ratings?.doubtSolving ?? 0}
+                    />
                   </div>
 
                   {/* Comment */}
@@ -695,6 +806,147 @@ const DashboardHome = () => {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {feedbacks.length > 0 && (
+          <div className="mt-5">
+            <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Analytics</h3>
+                <p className="text-xs text-gray-400">
+                  Subject-wise performance, rating distribution, and trends
+                </p>
+              </div>
+
+              <div className="min-w-[240px]">
+                <label className="block text-xs text-gray-400 mb-1">
+                  Filter by course
+                </label>
+                <select
+                  value={feedbackCourseFilter}
+                  onChange={(e) => setFeedbackCourseFilter(e.target.value)}
+                  className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
+                >
+                  <option value="all">All Courses</option>
+                  {feedbackCourseOptions.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                <h4 className="text-sm text-gray-300 mb-2">
+                  Subject Performance
+                </h4>
+                <div className="h-[240px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={subjectPerformanceData}>
+                      <XAxis
+                        dataKey="subject"
+                        stroke="#94a3b8"
+                        tick={{ fontSize: 10 }}
+                      />
+                      <YAxis
+                        domain={[0, 5]}
+                        stroke="#94a3b8"
+                        tick={{ fontSize: 10 }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: 8,
+                          padding: 8
+                        }}
+                        formatter={(val) => [`${val}`, 'Avg']}
+                      />
+                      <Bar
+                        dataKey="rating"
+                        fill="#22c55e"
+                        radius={[6, 6, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                <h4 className="text-sm text-gray-300 mb-2">
+                  Overall Rating Distribution
+                </h4>
+                <div className="flex items-center justify-center h-[240px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={ratingDistributionData}
+                        dataKey="value"
+                        innerRadius={40}
+                        outerRadius={80}
+                        paddingAngle={2}
+                        cornerRadius={6}
+                      >
+                        {ratingDistributionData.map((_, idx) => {
+                          const COLORS = [
+                            '#22c55e',
+                            '#facc15',
+                            '#ef4444'
+                          ];
+                          return (
+                            <Cell
+                              key={idx}
+                              fill={COLORS[idx % COLORS.length]}
+                            />
+                          );
+                        })}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 bg-white/5 border border-white/10 rounded-xl p-4">
+              <h4 className="text-sm text-gray-300 mb-2">Feedback Trend</h4>
+              <div className="h-[240px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={feedbackTrendData}>
+                    <XAxis
+                      dataKey="label"
+                      stroke="#94a3b8"
+                      tick={{ fontSize: 10 }}
+                      interval={0}
+                    />
+                    <YAxis
+                      domain={[0, 5]}
+                      stroke="#94a3b8"
+                      tick={{ fontSize: 10 }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: 8,
+                        padding: 8
+                      }}
+                      formatter={(val) => [`${val}`, 'Avg']}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="rating"
+                      stroke="#22c55e"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </div>
         )}
       </div>
