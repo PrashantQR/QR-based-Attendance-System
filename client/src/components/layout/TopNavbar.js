@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaBell, FaBars } from 'react-icons/fa';
+import { FaBars } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
 import { Settings, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -9,8 +9,6 @@ const TopNavbar = ({ onToggleSidebar }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState([]);
   const menuRef = useRef(null);
 
   const handleLogout = () => {
@@ -33,37 +31,6 @@ const TopNavbar = ({ onToggleSidebar }) => {
       window.removeEventListener('mousedown', onClickOutside);
     };
   }, [open]);
-
-  useEffect(() => {
-    const loadNotifications = () => {
-      try {
-        const raw = localStorage.getItem('qr_notifications');
-        if (!raw) {
-          setNotifications([]);
-          return;
-        }
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          setNotifications(parsed.slice(0, 10));
-        }
-      } catch {
-        setNotifications([]);
-      }
-    };
-
-    loadNotifications();
-
-    const onStorage = (event) => {
-      if (event.key === 'qr_notifications') {
-        loadNotifications();
-      }
-    };
-
-    window.addEventListener('storage', onStorage);
-    return () => {
-      window.removeEventListener('storage', onStorage);
-    };
-  }, []);
 
   return (
     <header className="sticky top-0 z-20 bg-secondary/80 backdrop-blur-xl border-b border-white/5">
@@ -96,59 +63,6 @@ const TopNavbar = ({ onToggleSidebar }) => {
         </motion.div>
 
         <div className="flex items-center gap-4 ml-4">
-          <div className="relative">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="relative inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/70 text-gray-300 border border-white/10 shadow-soft-glass"
-              onClick={() => setShowNotifications((prev) => !prev)}
-            >
-              <FaBell className="text-sm" />
-              {notifications.length > 0 && (
-                <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-4 min-w-[1rem] px-0.5 rounded-full bg-accent text-[10px] font-semibold text-secondary shadow-lg">
-                  {notifications.length}
-                </span>
-              )}
-            </motion.button>
-
-            <AnimatePresence>
-              {showNotifications && notifications.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: -6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute right-0 mt-2 w-72 bg-secondary/95 border border-white/10 rounded-2xl shadow-soft-glass backdrop-blur-xl overflow-hidden z-30"
-                >
-                  <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-gray-200">
-                      Recent activity
-                    </span>
-                    <span className="text-[10px] text-gray-400">
-                      {notifications.length} new
-                    </span>
-                  </div>
-                  <div className="max-h-64 overflow-y-auto">
-                    {notifications.map((n) => (
-                      <div
-                        key={n.id}
-                        className="px-3 py-2 text-xs text-gray-200 border-b border-white/5 last:border-b-0 hover:bg-white/5"
-                      >
-                        <div className="font-semibold truncate">{n.title}</div>
-                        <div className="text-[11px] text-gray-400 truncate">
-                          {n.description}
-                        </div>
-                        <div className="text-[10px] text-gray-500 mt-0.5">
-                          {n.time}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
           <div className="relative" ref={menuRef}>
             <button
               type="button"
