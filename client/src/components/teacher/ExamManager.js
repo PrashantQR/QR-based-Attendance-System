@@ -27,10 +27,14 @@ const ExamManager = () => {
     if (!selectedSubject) return [];
     return tests.filter(
       (t) => {
-        // Prefer filtering by subjectId (more reliable), fallback to name.
-        if (t.subjectId) return String(t.subjectId) === String(selectedSubject);
+        const subjectIdMatch = t.subjectId
+          ? String(t.subjectId) === String(selectedSubject)
+          : false;
 
-        // Fallback for older tests that might not contain subjectId in the API response.
+        if (subjectIdMatch) return true;
+
+        // Fallback to name matching (helps if subjectId is missing/mismatched
+        // but subjectName is still populated).
         if (!selectedSubjectName) return false;
         return (
           String(t.subjectName || '')
