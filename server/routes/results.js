@@ -215,12 +215,23 @@ router.get(
     try {
       const { testId } = req.params;
 
-      // NOTE: `correctAnswer` is `select: false` in the Question schema,
-      // so we must explicitly opt-in (+questions.correctAnswer).
+      // NOTE: `correctAnswer` is `select: false` in the embedded Question schema.
+      // We avoid Mongoose "Path collision" by explicitly selecting only the needed
+      // question subpaths (instead of selecting the whole `questions` object).
       const test = await Test.findById(testId)
         .populate('subjectId', 'name')
-        .select('title status questions subjectId')
-        .select('+questions.correctAnswer');
+        .select({
+          title: 1,
+          status: 1,
+          subjectId: 1,
+          'questions._id': 1,
+          'questions.text': 1,
+          'questions.optionA': 1,
+          'questions.optionB': 1,
+          'questions.optionC': 1,
+          'questions.optionD': 1,
+          'questions.correctAnswer': 1
+        });
       if (!test) {
         return res.status(404).json({ success: false, message: 'Test not found', data: {} });
       }
