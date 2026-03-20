@@ -694,15 +694,15 @@ const DashboardHome = () => {
       </div>
 
       {/* Student Feedback */}
-      <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white">Student Feedback</h2>
+      <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-3">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold text-white">Student Feedback</h2>
           {feedbackLoading && (
             <span className="text-xs text-gray-400">Loading…</span>
           )}
         </div>
 
-        <div className="bg-white/5 rounded-xl p-3 mb-3 border border-white/10">
+        <div className="bg-white/5 rounded-xl p-2.5 mb-2 border border-white/10">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-300">Overall Rating</div>
             <div className="text-sm text-gray-300">{feedbacks.length} feedback</div>
@@ -735,10 +735,10 @@ const DashboardHome = () => {
               return (
                 <div
                   key={`${f.createdAt}-${idx}`}
-                  className="bg-[#0f172a] p-4 rounded-lg mb-3 text-sm"
+                  className="bg-[#0f172a] p-3 rounded-lg mb-2 text-xs"
                 >
                   {/* Top Row */}
-                  <div className="flex justify-between items-center mb-2">
+                  <div className="flex justify-between items-center mb-1.5">
                     <div className="flex items-center gap-2">
                       ⭐{' '}
                       <span className="font-semibold text-white">
@@ -753,7 +753,7 @@ const DashboardHome = () => {
                   </div>
 
                   {/* Rating Bars */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-1.5">
                     <RatingBar
                       label="Teaching"
                       value={f.ratings?.teachingQuality ?? 0}
@@ -778,7 +778,7 @@ const DashboardHome = () => {
 
                   {/* Comment */}
                   {f.comment && String(f.comment).trim() && (
-                    <p className="text-gray-400 text-xs mt-2 italic">
+                    <p className="text-gray-400 text-[11px] mt-1.5 italic">
                       “{String(f.comment).trim()}”
                     </p>
                   )}
@@ -789,12 +789,12 @@ const DashboardHome = () => {
         )}
 
         {feedbacks.length > 0 && (
-            <div className="mt-4">
-            <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
+            <div className="mt-3">
+            <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
               <div>
                 <h3 className="text-sm font-semibold text-white">Analytics</h3>
                 <p className="text-xs text-gray-400">
-                  Subject-wise performance, rating distribution, and trends
+                  Subject-wise performance
                 </p>
               </div>
 
