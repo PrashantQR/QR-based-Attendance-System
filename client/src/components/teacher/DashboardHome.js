@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { QRCodeCanvas } from 'qrcode.react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -42,6 +43,10 @@ const DashboardHome = () => {
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [evaluationStats, setEvaluationStats] = useState(null);
   const [evaluationStatsLoading, setEvaluationStatsLoading] = useState(false);
+
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [qrData, setQrData] = useState([]);
+  const [qrLoading, setQrLoading] = useState(false);
 
   const fetchDashboardStats = useCallback(async () => {
     if (!selectedSubject) {
@@ -102,6 +107,33 @@ const DashboardHome = () => {
       setLoading(false);
     }
   }, [logout, navigate, selectedDate, selectedSubject]);
+
+  const fetchActiveQrs = useCallback(async () => {
+    setQrLoading(true);
+    try {
+      const res = await api.get('/qr/active');
+      const list = Array.isArray(res.data?.data) ? res.data.data : [];
+      setQrData(list);
+    } catch (error) {
+      console.error('Fetch active QR error:', error);
+      setQrData([]);
+    } finally {
+      setQrLoading(false);
+    }
+  }, []);
+
+  const openQRModal = async () => {
+    setShowQRModal(true);
+    await fetchActiveQrs();
+  };
+
+  useEffect(() => {
+    if (!showQRModal) return undefined;
+    const interval = setInterval(() => {
+      fetchActiveQrs();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [showQRModal, fetchActiveQrs]);
 
   const openStudentModal = useCallback(
     async (mode) => {
@@ -311,7 +343,9 @@ const DashboardHome = () => {
   const presentCount = hasSessions ? stats.presentCount : '—';
   const absentCount = hasSessions ? stats.absentCount : '—';
   const activeQR = stats.qrActive ? 'Active' : 'Inactive';
-  const activeQrSubtext = `${stats.activeQrCount || 0} active`;
+  const activeQrSubtext = stats.qrActive
+    ? `Click to view QR (${stats.activeQrCount || 0} active)`
+    : `${stats.activeQrCount || 0} active`;
   const latestFeedbacks = feedbacks.slice(0, 5);
 
   return (
@@ -414,6 +448,9 @@ const DashboardHome = () => {
           value={activeQR}
           subtext={activeQrSubtext}
           highlight={stats.qrActive ? 'success' : 'muted'}
+          onClick={() => {
+            if (stats.qrActive) openQRModal();
+          }}
         />
         <SummaryCard
           title="Attendance %"
@@ -700,6 +737,91 @@ const DashboardHome = () => {
               <p className="text-sm text-gray-400">
                 No students found for selected subject
               </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showQRModal && (
+        <div
+          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowQRModal(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="w-full max-w-4xl bg-slate-900/95 border border-slate-700 rounded-xl p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-white">
+                  Active QR Sessions
+                </h2>
+                <p className="text-sm text-gray-400 mt-1">
+                  {stats.activeQrCount || qrData.length || 0} active
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowQRModal(false)}
+                className="px-3 py-1 rounded border border-slate-700 text-gray-300 hover:bg-slate-800"
+              >
+                Close
+              </button>
+            </div>
+
+            {qrLoading ? (
+              <p className="text-sm text-gray-400">Loading active QR…</p>
+            ) : qrData.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[70vh] overflow-y-auto pr-1">
+                {qrData.map((qr) => {
+                  const expiresAt = qr.expiresAt || qr.exp || null;
+                  return (
+                    <div
+                      key={qr._id}
+                      className="bg-slate-950/50 border border-slate-800 rounded-xl p-4 hover:bg-slate-800/40 transition"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs text-gray-400">Subject</p>
+                          <p className="text-sm text-gray-200 truncate">
+                            {qr.subject || qr.subjectId?.name || 'N/A'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-gray-400">Expiry</p>
+                          <p className="text-sm text-gray-200">
+                            {expiresAt ? new Date(expiresAt).toLocaleString() : '—'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 text-xs text-gray-300 space-y-1">
+                        <p>
+                          <span className="text-gray-400">Session Code:</span>{' '}
+                          <span className="text-gray-200 break-all">{qr.code}</span>
+                        </p>
+                        <p>
+                          <span className="text-gray-400">Course:</span> {qr.course || '—'}
+                        </p>
+                        <p>
+                          <span className="text-gray-400">Semester:</span> {qr.semester || '—'}
+                        </p>
+                        <p>
+                          <span className="text-gray-400">Location:</span> {qr.location || '—'}
+                        </p>
+                      </div>
+
+                      <div className="mt-3 flex justify-center">
+                        <QRCodeCanvas value={String(qr.code || '')} size={110} level="H" />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400">No active QR sessions found.</p>
             )}
           </div>
         </div>
