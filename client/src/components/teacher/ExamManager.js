@@ -24,13 +24,14 @@ const ExamManager = () => {
 
   const filteredTests = useMemo(() => {
     if (!Array.isArray(tests)) return [];
-    if (!selectedSubjectName) return [];
+    if (!selectedSubject) return [];
     return tests.filter(
       (t) => {
         // Prefer filtering by subjectId (more reliable), fallback to name.
-        if (t.subjectId) {
-          return String(t.subjectId) === String(selectedSubject);
-        }
+        if (t.subjectId) return String(t.subjectId) === String(selectedSubject);
+
+        // Fallback for older tests that might not contain subjectId in the API response.
+        if (!selectedSubjectName) return false;
         return (
           String(t.subjectName || '')
             .trim()
@@ -38,7 +39,7 @@ const ExamManager = () => {
         );
       }
     );
-  }, [tests, selectedSubjectName, selectedSubject]);
+  }, [tests, selectedSubject, selectedSubjectName]);
 
   useEffect(() => {
     const fetchSubjects = async () => {
@@ -66,7 +67,7 @@ const ExamManager = () => {
 
   useEffect(() => {
     const fetchTests = async () => {
-      if (!selectedSubjectName) {
+      if (!selectedSubject) {
         setTests([]);
         return;
       }
@@ -85,7 +86,7 @@ const ExamManager = () => {
     };
 
     fetchTests();
-  }, [selectedSubjectName]);
+  }, [selectedSubject]);
 
   const handleImport = async (e) => {
     e.preventDefault();
