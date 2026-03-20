@@ -109,7 +109,8 @@ router.get(
             _id: t._id,
             title: t.title,
             status: effectiveStatus,
-            subjectName: t.subjectId?.name || ''
+            subjectName: t.subjectId?.name || '',
+            subjectId: t.subjectId?._id || null
           };
         });
 

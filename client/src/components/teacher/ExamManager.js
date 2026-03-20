@@ -25,11 +25,20 @@ const ExamManager = () => {
   const filteredTests = useMemo(() => {
     if (!Array.isArray(tests)) return [];
     if (!selectedSubjectName) return [];
-    const target = selectedSubjectName.trim().toLowerCase();
     return tests.filter(
-      (t) => String(t.subjectName || '').trim().toLowerCase() === target
+      (t) => {
+        // Prefer filtering by subjectId (more reliable), fallback to name.
+        if (t.subjectId) {
+          return String(t.subjectId) === String(selectedSubject);
+        }
+        return (
+          String(t.subjectName || '')
+            .trim()
+            .toLowerCase() === selectedSubjectName.trim().toLowerCase()
+        );
+      }
     );
-  }, [tests, selectedSubjectName]);
+  }, [tests, selectedSubjectName, selectedSubject]);
 
   useEffect(() => {
     const fetchSubjects = async () => {
