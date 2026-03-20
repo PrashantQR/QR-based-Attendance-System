@@ -175,7 +175,7 @@ const ExamRunner = ({
           ) : null}
         </div>
 
-        <div className="text-right">
+        <div className="text-center md:text-right md:mt-0 mt-2">
           <p className="text-xs text-gray-400">Time Remaining</p>
           <p className="text-2xl font-semibold text-emerald-400">
             {formatTime(timeLeftSeconds)}
@@ -244,8 +244,8 @@ const ExamRunner = ({
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   disabled={currentIndex === 0 || submitting}
@@ -289,7 +289,7 @@ const ExamRunner = ({
                             </button>
               </div>
 
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 justify-center sm:justify-end w-full sm:w-auto">
                             <button
                               type="button"
                               disabled={submitting}
