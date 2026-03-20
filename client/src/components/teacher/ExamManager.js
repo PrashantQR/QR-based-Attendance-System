@@ -59,7 +59,14 @@ const ExamManager = () => {
 
       setSubjectsLoading(true);
       try {
-        const res = await api.get('/teacher/subjects');
+        // Prevent browser caching (304 reuses stale empty body).
+        const res = await api.get('/teacher/subjects', {
+          params: { nocache: Date.now() },
+          headers: {
+            'Cache-Control': 'no-cache',
+            Pragma: 'no-cache'
+          }
+        });
         const list = Array.isArray(res.data?.data) ? res.data.data : [];
         setSubjects(list);
 
