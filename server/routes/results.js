@@ -217,7 +217,7 @@ router.get(
 
       const test = await Test.findById(testId)
         .populate('subjectId', 'name')
-        .select('title status questions subjectId');
+        .select('title status questions subjectId +questions.correctAnswer');
       if (!test) {
         return res.status(404).json({ success: false, message: 'Test not found', data: {} });
       }
@@ -245,6 +245,22 @@ router.get(
           ? attempt.pass
           : formatPercentageStatus(attempt.percentage);
 
+      const selectedMap = new Map(
+        (attempt.answers || []).map((a) => [String(a.questionId), a.selected || null])
+      );
+
+      const isPublished = test.status === 'published';
+      const questions = (test.questions || []).map((q) => {
+        const studentAnswer = selectedMap.get(String(q._id)) || null;
+        return {
+          question: q.text,
+          options: [q.optionA, q.optionB, q.optionC, q.optionD],
+          // Security rule: only send correctAnswer when published
+          correctAnswer: isPublished ? q.correctAnswer : null,
+          studentAnswer
+        };
+      });
+
       return res.json({
         success: true,
         data: {
@@ -256,7 +272,8 @@ router.get(
           score: Number(attempt.score || 0),
           percentage: Number(attempt.percentage || 0),
           pass,
-          submittedAt: attempt.submittedAt || attempt.createdAt
+          submittedAt: attempt.submittedAt || attempt.createdAt,
+          questions
         }
       });
     } catch (error) {

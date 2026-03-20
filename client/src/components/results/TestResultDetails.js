@@ -11,6 +11,7 @@ const TestResultDetails = () => {
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
+  const [wrongOnly, setWrongOnly] = useState(false);
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -191,6 +192,19 @@ const TestResultDetails = () => {
 
   // student
   const pass = Boolean(data.pass);
+
+  const questions = Array.isArray(data.questions) ? data.questions : [];
+  const correctCount = questions.filter(
+    (q) =>
+      q.correctAnswer &&
+      q.studentAnswer &&
+      String(q.studentAnswer) === String(q.correctAnswer)
+  ).length;
+  const wrongCount = questions.length - correctCount;
+  const filteredQuestions = wrongOnly
+    ? questions.filter((q) => q.correctAnswer && q.studentAnswer !== q.correctAnswer)
+    : questions;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
@@ -236,6 +250,97 @@ const TestResultDetails = () => {
           </p>
         </div>
       </div>
+
+      {questions.length > 0 ? (
+        <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-4 md:p-6 space-y-3">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="text-sm text-gray-400">
+              Correct: <b className="text-emerald-300">{correctCount}</b> | Wrong:{' '}
+              <b className="text-rose-300">{wrongCount}</b>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setWrongOnly((v) => !v)}
+              className="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-200 hover:bg-white/10"
+              aria-pressed={wrongOnly}
+            >
+              {wrongOnly ? 'Show all' : 'Show only wrong answers'}
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {filteredQuestions.length > 0 ? (
+              filteredQuestions.map((q, index) => {
+                const correctAnswer = q.correctAnswer || null;
+                const studentAnswer = q.studentAnswer || null;
+                const isCorrectQuestion =
+                  correctAnswer && studentAnswer && studentAnswer === correctAnswer;
+
+                return (
+                  <div
+                    key={`${q.question}-${index}`}
+                    className="bg-[#0f172a] border border-white/5 p-4 rounded-lg"
+                  >
+                    <h3 className="font-semibold mb-3 text-white">
+                      Q{index + 1}. {q.question}
+                    </h3>
+
+                    <div className="grid gap-2 text-sm">
+                      {(q.options || []).map((opt, i) => {
+                        const optionLabel = String.fromCharCode(65 + i); // A/B/C/D
+                        const isCorrect = correctAnswer === optionLabel;
+                        const isSelected = studentAnswer === optionLabel;
+
+                        return (
+                          <div
+                            key={`${optionLabel}-${index}`}
+                            className={`p-2 rounded border transition
+                              ${
+                                isCorrect
+                                  ? 'bg-green-600/20 border-green-500 text-emerald-200'
+                                  : ''
+                              }
+                              ${
+                                isSelected && !isCorrect
+                                  ? 'bg-red-600/20 border-red-500 text-rose-200'
+                                  : isSelected && isCorrect
+                                  ? 'bg-green-600/20 border-green-500 text-emerald-200'
+                                  : 'border-white/5'
+                              }`}
+                          >
+                            {optionLabel}. {opt}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-3 text-xs text-gray-400 flex items-center justify-between gap-3 flex-wrap">
+                      <div>
+                        Your Answer: <b className="text-white">{studentAnswer || '—'}</b> |
+                        Correct: <b className="text-white">{correctAnswer || '—'}</b>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isCorrectQuestion ? (
+                          <span className="text-emerald-300 font-semibold">✅ Correct</span>
+                        ) : (
+                          <span className="text-rose-300 font-semibold">❌ Wrong</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-sm text-gray-400">No wrong answers found.</div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
+          <p className="text-sm text-amber-300">Questions not available for this result.</p>
+        </div>
+      )}
     </div>
   );
 };
