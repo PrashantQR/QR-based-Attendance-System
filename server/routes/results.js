@@ -224,6 +224,8 @@ router.get(
           title: 1,
           status: 1,
           subjectId: 1,
+          durationMinutes: 1,
+          qrExpiresAt: 1,
           'questions._id': 1,
           'questions.text': 1,
           'questions.optionA': 1,
@@ -236,34 +238,66 @@ router.get(
         return res.status(404).json({ success: false, message: 'Test not found', data: {} });
       }
 
-      if (test.status !== 'published') {
-        return res.json({ success: false, message: 'Result not declared', data: {} });
-      }
-
       const attempt = await TestAttempt.findOne({
         test: test._id,
         student: req.user._id
       });
 
+      const totalQuestions = Array.isArray(test.questions) ? test.questions.length : 0;
+
+      const now = new Date();
+      const isExpired = Boolean(
+        test.status === 'active' &&
+          test.qrExpiresAt &&
+          test.qrExpiresAt instanceof Date &&
+          test.qrExpiresAt <= now
+      );
+      const isPublished = test.status === 'published';
+
+      const testMeta = {
+        testId: test._id,
+        testTitle: test.title,
+        subjectName: test.subjectId?.name || '',
+        durationMinutes: Number(test.durationMinutes || 0),
+        totalQuestions,
+        status: test.status,
+        isExpired,
+        expiresAt: test.qrExpiresAt || null,
+        // Max 1 attempt per student per test is enforced in schema index.
+        attemptCount: attempt ? 1 : 0,
+        submittedAt: attempt?.submittedAt || attempt?.createdAt || null
+      };
+
+      // Case 1: No attempt
       if (!attempt) {
-        return res.status(404).json({
+        return res.json({
           success: false,
           message: 'No attempt found for this test',
-          data: {}
+          data: { test: testMeta }
         });
       }
 
-      const totalQuestions = Array.isArray(test.questions) ? test.questions.length : 0;
+      // Case 3: Attempt exists but result not published
+      if (!isPublished) {
+        return res.json({
+          success: false,
+          message: 'Result not declared',
+          data: { test: testMeta }
+        });
+      }
+
       const pass =
         typeof attempt.pass === 'boolean'
           ? attempt.pass
           : formatPercentageStatus(attempt.percentage);
 
       const selectedMap = new Map(
-        (attempt.answers || []).map((a) => [String(a.questionId), a.selected || null])
+        (attempt.answers || []).map((a) => [
+          String(a.questionId),
+          a.selected || null
+        ])
       );
 
-      const isPublished = test.status === 'published';
       const questions = (test.questions || []).map((q) => {
         const studentAnswer = selectedMap.get(String(q._id)) || null;
         return {

@@ -30,7 +30,11 @@ const TestResultDetails = () => {
         } else {
           const res = await api.get(`/results/student/test/${testId}`);
           if (!res.data?.success) {
-            setData({ pending: true, message: res.data?.message || '' });
+            setData({
+              pending: true,
+              message: res.data?.message || '',
+              test: res.data?.data?.test || null
+            });
             return;
           }
           setData(res.data?.data || null);
@@ -38,7 +42,11 @@ const TestResultDetails = () => {
       } catch (error) {
         console.error('Test result details fetch error:', error);
         toast.error(error.response?.data?.message || 'Failed to fetch results');
-        setData({ pending: true, message: error.response?.data?.message || '' });
+        setData({
+          pending: true,
+          message: error.response?.data?.message || '',
+          test: error.response?.data?.data?.test || null
+        });
       } finally {
         setLoading(false);
       }
@@ -81,6 +89,47 @@ const TestResultDetails = () => {
   const role = user?.role;
 
   if (data.pending) {
+    if (role === 'teacher') {
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl md:text-3xl font-semibold text-white">
+                Test Results
+              </h2>
+              <p className="text-sm text-gray-400">Test ID: {testId}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                navigate(role === 'teacher' ? '/teacher/results' : '/student/results')
+              }
+              className="px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-200 hover:bg-white/10"
+            >
+              Back
+            </button>
+          </div>
+
+          <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
+            <p className="text-sm text-amber-300">
+              {data?.message || 'Result not declared'}
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    const pendingTest = data.test || {};
+    const attempts = pendingTest.attemptCount ?? 0;
+    const isExpired = Boolean(pendingTest.isExpired);
+    const statusLabel = isExpired ? 'Expired' : 'Active';
+    const showStart =
+      Number(attempts) === 0 && pendingTest.status === 'active' && !isExpired;
+    const isResultNotDeclared =
+      Number(attempts) > 0 &&
+      pendingTest.status !== 'published' &&
+      !showStart;
+
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-4">
@@ -99,10 +148,55 @@ const TestResultDetails = () => {
           </button>
         </div>
 
-        <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
-          <p className="text-sm text-amber-300">
-            {data.message || 'Result not declared'}
+        <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-6">
+          <h3
+            className={`text-lg font-semibold mb-2 ${
+              isExpired ? 'text-rose-300' : 'text-yellow-300'
+            }`}
+          >
+            {isResultNotDeclared
+              ? 'Test submitted but result not declared yet'
+              : Number(attempts) === 0
+              ? 'You have not attempted this test yet'
+              : 'Result not declared'}
+          </h3>
+
+          {Number(attempts) === 0 && (
+            <p className="text-sm text-gray-400 mb-4">
+              Subject: <b className="text-white">{pendingTest.subjectName || '—'}</b> •
+              Duration: <b className="text-white">{pendingTest.durationMinutes || 0}</b> min •
+              Questions: <b className="text-white">{pendingTest.totalQuestions || 0}</b> •
+              Status: <b className="text-white">{statusLabel}</b>
+            </p>
+          )}
+
+          {Number(attempts) > 0 && (
+            <p className="text-sm text-gray-400 mb-4">
+              Subject: <b className="text-white">{pendingTest.subjectName || '—'}</b> •
+              Questions: <b className="text-white">{pendingTest.totalQuestions || 0}</b> •
+              Status: <b className="text-white">{statusLabel}</b>
+            </p>
+          )}
+
+          <p className="text-xs text-gray-400 mb-4">
+            Attempts: <b className="text-white">{attempts}</b> / 1
           </p>
+
+          {isExpired && Number(attempts) === 0 && (
+            <div className="text-sm text-rose-300 mb-4">⛔ Test expired. You can no longer attempt.</div>
+          )}
+
+          {showStart && (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => navigate('/student/exam/scan')}
+                className="bg-green-500 px-5 py-2 rounded-lg text-white font-medium hover:bg-green-400"
+              >
+                Start Test
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
