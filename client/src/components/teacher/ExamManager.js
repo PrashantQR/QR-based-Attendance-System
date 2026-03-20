@@ -19,14 +19,15 @@ const ExamManager = () => {
   const selectedSubjectName = useMemo(() => {
     if (!Array.isArray(subjects) || !selectedSubject) return '';
     const found = subjects.find((s) => String(s._id) === String(selectedSubject));
-    return found?.name || '';
+    return String(found?.name || '').trim();
   }, [subjects, selectedSubject]);
 
   const filteredTests = useMemo(() => {
     if (!Array.isArray(tests)) return [];
     if (!selectedSubjectName) return [];
+    const target = selectedSubjectName.trim().toLowerCase();
     return tests.filter(
-      (t) => String(t.subjectName || '') === String(selectedSubjectName)
+      (t) => String(t.subjectName || '').trim().toLowerCase() === target
     );
   }, [tests, selectedSubjectName]);
 
