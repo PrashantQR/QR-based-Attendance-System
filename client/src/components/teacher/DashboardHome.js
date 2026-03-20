@@ -333,16 +333,6 @@ const DashboardHome = () => {
     [stats.recentActivity]
   );
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="spinner-border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    );
-  }
-
   const totalSessions = stats.totalSessions;
   const totalStudents = stats.totalStudents;
   const hasSessions = totalSessions > 0;
@@ -441,6 +431,16 @@ const DashboardHome = () => {
     // last 7 points
     return arr.slice(-7);
   }, [chartFeedbacks]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="spinner-border" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+  }
 
   const getFeedbackColor = (value) => {
     const v = Number(value || 0);
