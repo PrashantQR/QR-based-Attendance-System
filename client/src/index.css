@@ -37,8 +37,6 @@ input[type='date'] {
     Force a visible calendar icon on dark UI by drawing our own white SVG.
     This avoids browser-native indicator rendering inconsistencies.
   */
-  -webkit-appearance: none;
-  appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='24'%20height='24'%20viewBox='0%200%2024%2024'%3E%3Crect%20x='3'%20y='4'%20width='18'%20height='18'%20rx='2'%20ry='2'%20fill='none'%20stroke='white'%20stroke-width='2'/%3E%3Cline%20x1='3'%20y1='10'%20x2='21'%20y2='10'%20stroke='white'%20stroke-width='2'/%3E%3Cline%20x1='8'%20y1='2'%20x2='8'%20y2='6'%20stroke='white'%20stroke-width='2'/%3E%3Cline%20x1='16'%20y1='2'%20x2='16'%20y2='6'%20stroke='white'%20stroke-width='2'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.9rem center;
@@ -49,13 +47,13 @@ input[type='date'] {
 }
 
 input[type='date']::-webkit-calendar-picker-indicator {
-  /* Hide native indicator (we render our own icon above) */
-  opacity: 0;
-  filter: none;
+  /* Keep native indicator clickable; recolor for dark UI */
+  opacity: 1;
+  filter: invert(1) brightness(8) contrast(1.1);
   cursor: pointer;
 }
 
 input[type='date']::-webkit-calendar-picker-indicator:hover {
-  opacity: 0;
-  filter: none;
+  opacity: 1;
+  filter: invert(1) brightness(10) contrast(1.1);
 }
