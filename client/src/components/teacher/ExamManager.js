@@ -2,8 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ExamManager = () => {
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
   const [subjects, setSubjects] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState('');
   const [subjectsLoading, setSubjectsLoading] = useState(false);
@@ -47,11 +49,17 @@ const ExamManager = () => {
 
   useEffect(() => {
     const fetchSubjects = async () => {
+      if (authLoading) return;
+      if (!isAuthenticated) return;
+      if (user?.role !== 'teacher') return;
+
       setSubjectsLoading(true);
       try {
         const res = await api.get('/teacher/subjects');
         const list = Array.isArray(res.data?.data) ? res.data.data : [];
         setSubjects(list);
+
+        // Default-select first subject once subjects arrive.
         if (!selectedSubject && list.length > 0) {
           setSelectedSubject(String(list[0]._id));
         }
@@ -66,8 +74,12 @@ const ExamManager = () => {
     };
 
     fetchSubjects();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [
+    authLoading,
+    isAuthenticated,
+    user?.role,
+    selectedSubject
+  ]);
 
   useEffect(() => {
     const fetchTests = async () => {
