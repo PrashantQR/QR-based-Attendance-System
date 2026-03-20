@@ -25,6 +25,7 @@ const ExamRunner = ({
   const [markedForReview, setMarkedForReview] = useState([]);
   const [visitedQuestions, setVisitedQuestions] = useState({});
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [showSavedIndicator, setShowSavedIndicator] = useState(false);
   const [timeLeftSeconds, setTimeLeftSeconds] = useState(
     Number(durationMinutes || 0) * 60
   );
@@ -145,7 +146,9 @@ const ExamRunner = ({
   const handleSaveAnswer = () => {
     // Answers are already stored on selection in this UI;
     // this button is for UX parity with real exam platforms.
-    toast.success('Answer saved');
+    // Keep UX clean: no toast on every click.
+    setShowSavedIndicator(true);
+    window.setTimeout(() => setShowSavedIndicator(false), 800);
   };
 
   const handleMarkForReview = () => {
@@ -287,6 +290,11 @@ const ExamRunner = ({
                             >
                               Save Answer
                             </button>
+                            {showSavedIndicator && (
+                              <span className="text-xs text-emerald-200 ml-2 whitespace-nowrap">
+                                ✔ Saved
+                              </span>
+                            )}
               </div>
 
                           <div className="flex items-center gap-3 justify-center sm:justify-end w-full sm:w-auto">
