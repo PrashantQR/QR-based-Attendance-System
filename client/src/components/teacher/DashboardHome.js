@@ -9,12 +9,7 @@ import {
   Bar,
   XAxis,
   YAxis,
-  Tooltip,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line
+  Tooltip
 } from 'recharts';
 
 const DashboardHome = () => {
@@ -380,59 +375,6 @@ const DashboardHome = () => {
         rating: Number((v.sum / Math.max(1, v.count)).toFixed(2))
       }))
       .sort((a, b) => (a.rating < b.rating ? 1 : -1));
-  }, [chartFeedbacks]);
-
-  const ratingDistributionData = useMemo(() => {
-    const list = chartFeedbacks || [];
-    const n = list.length || 0;
-    if (!n) return [];
-
-    let excellent = 0;
-    let average = 0;
-    let poor = 0;
-
-    for (const f of list) {
-      const r = Number(f.averageRating || 0);
-      if (r >= 4) excellent += 1;
-      else if (r >= 2) average += 1;
-      else poor += 1;
-    }
-
-    return [
-      { name: 'Excellent (4-5)', value: excellent },
-      { name: 'Average (2-3)', value: average },
-      { name: 'Poor (0-2)', value: poor }
-    ];
-  }, [chartFeedbacks]);
-
-  const feedbackTrendData = useMemo(() => {
-    const list = chartFeedbacks || [];
-    if (!list.length) return [];
-
-    const map = new Map();
-    for (const f of list) {
-      const d = f.createdAt ? new Date(f.createdAt) : null;
-      if (!d) continue;
-      const key = d.toISOString().slice(0, 10);
-      const prev = map.get(key) || { sum: 0, count: 0, date: d };
-      prev.sum += Number(f.averageRating || 0);
-      prev.count += 1;
-      map.set(key, prev);
-    }
-
-    const arr = Array.from(map.entries())
-      .map(([key, v]) => ({
-        key,
-        label: new Date(key).toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: 'short'
-        }),
-        rating: Number((v.sum / Math.max(1, v.count)).toFixed(2))
-      }))
-      .sort((a, b) => (a.key < b.key ? -1 : 1));
-
-    // last 7 points
-    return arr.slice(-7);
   }, [chartFeedbacks]);
 
   if (loading) {
@@ -875,12 +817,12 @@ const DashboardHome = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <div className="bg-white/5 border border-white/10 rounded-xl p-3">
                 <h4 className="text-sm text-gray-300 mb-2">
                   Subject Performance
                 </h4>
-                <div className="h-[220px]">
+                <div className="h-[180px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={subjectPerformanceData}>
                       <XAxis
@@ -910,78 +852,6 @@ const DashboardHome = () => {
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-              </div>
-
-              <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                <h4 className="text-sm text-gray-300 mb-2">
-                  Overall Rating Distribution
-                </h4>
-                <div className="flex items-center justify-center h-[220px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={ratingDistributionData}
-                        dataKey="value"
-                        innerRadius={40}
-                        outerRadius={80}
-                        paddingAngle={2}
-                        cornerRadius={6}
-                      >
-                        {ratingDistributionData.map((_, idx) => {
-                          const COLORS = [
-                            '#22c55e',
-                            '#facc15',
-                            '#ef4444'
-                          ];
-                          return (
-                            <Cell
-                              key={idx}
-                              fill={COLORS[idx % COLORS.length]}
-                            />
-                          );
-                        })}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-3 bg-white/5 border border-white/10 rounded-xl p-3 md:col-span-2">
-              <h4 className="text-sm text-gray-300 mb-2">Feedback Trend</h4>
-              <div className="h-[180px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={feedbackTrendData}>
-                    <XAxis
-                      dataKey="label"
-                      stroke="#94a3b8"
-                      tick={{ fontSize: 10 }}
-                      interval={0}
-                    />
-                    <YAxis
-                      domain={[0, 5]}
-                      stroke="#94a3b8"
-                      tick={{ fontSize: 10 }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: 8,
-                        padding: 8
-                      }}
-                      formatter={(val) => [`${val}`, 'Avg']}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="rating"
-                      stroke="#22c55e"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
               </div>
             </div>
           </div>
