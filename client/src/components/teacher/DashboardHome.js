@@ -576,7 +576,7 @@ const DashboardHome = () => {
       </div>
 
       {/* Top summary cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
         <SummaryCard
           title="Total Sessions"
           value={totalSessions}
@@ -621,55 +621,58 @@ const DashboardHome = () => {
         </p>
       )}
 
-      {/* Subject summary */}
-      <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
-        <h2 className="text-lg font-semibold text-white mb-4">
-          Subject Summary
-        </h2>
-        {subjectCards.length === 0 ? (
-          <p className="text-sm text-gray-400">No data available</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {subjectCards.map((sub) => (
-              <div key={sub.name} className="bg-slate-950/40 border border-slate-800 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-semibold text-slate-200">{sub.name}</p>
-                  <span className="text-xs text-emerald-300 font-semibold">{sub.percentage}%</span>
+      {/* Compact operational grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+        {/* Subject summary */}
+        <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-4">
+          <h2 className="text-sm font-semibold text-white mb-3">
+            Subject Summary
+          </h2>
+          {subjectCards.length === 0 ? (
+            <p className="text-sm text-gray-400">No data available</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {subjectCards.map((sub) => (
+                <div key={sub.name} className="bg-slate-950/40 border border-slate-800 rounded-xl p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold text-slate-200">{sub.name}</p>
+                    <span className="text-[11px] text-emerald-300 font-semibold">{sub.percentage}%</span>
+                  </div>
+                  <div className="w-full bg-slate-800 h-2 rounded overflow-hidden">
+                    <div
+                      className="bg-emerald-500 h-2 rounded"
+                      style={{ width: `${sub.percentage}%` }}
+                    />
+                  </div>
+                  <p className="text-[11px] text-gray-400 mt-2">
+                    {sub.present} present / {sub.total} total ({sub.percentage}%)
+                  </p>
                 </div>
-                <div className="w-full bg-slate-800 h-2 rounded overflow-hidden">
-                  <div
-                    className="bg-emerald-500 h-2 rounded"
-                    style={{ width: `${sub.percentage}%` }}
-                  />
-                </div>
-                <p className="text-xs text-gray-400 mt-2">
-                  {sub.present} present / {sub.total} total ({sub.percentage}%)
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-      {/* Recent Activity */}
-      <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
-        <h2 className="text-lg font-semibold text-white mb-4">
-          Recent Activity
-        </h2>
-        {activities.length === 0 ? (
-          <p className="text-sm text-gray-400">No recent activity</p>
-        ) : (
-          <div className="divide-y divide-slate-800">
-            {activities.map((a) => (
-              <div
-                key={a.id}
-                className="py-2 text-sm text-slate-200 flex items-center justify-between"
-              >
-                <span className="truncate">{a.text}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Recent Activity */}
+        <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-4">
+          <h2 className="text-sm font-semibold text-white mb-3">
+            Recent Activity
+          </h2>
+          {activities.length === 0 ? (
+            <p className="text-sm text-gray-400">No recent activity</p>
+          ) : (
+            <div className="divide-y divide-slate-800">
+              {activities.map((a) => (
+                <div
+                  key={a.id}
+                  className="py-2 text-xs text-slate-200 flex items-center justify-between"
+                >
+                  <span className="truncate">{a.text}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Evaluation Insights */}
@@ -681,9 +684,9 @@ const DashboardHome = () => {
         {evaluationStatsLoading ? (
           <p className="text-xs text-gray-400">Loading…</p>
         ) : evaluationStats?.total ? (
-          <div className="flex flex-col md:flex-row md:items-stretch gap-4">
+          <div className="flex flex-col md:flex-row md:items-stretch gap-3">
             {/* Average Rating Card */}
-            <div className="md:w-1/3 bg-green-500/15 px-3 py-3 rounded-lg border border-green-500/25 flex flex-col justify-center">
+            <div className="md:w-1/3 bg-green-500/15 px-3 py-3 rounded-lg border border-green-500/25 flex flex-col justify-center min-h-[170px]">
               <div className="text-[11px] text-green-200 uppercase tracking-wide">
                 Average Rating
               </div>
@@ -697,8 +700,8 @@ const DashboardHome = () => {
             </div>
 
             {/* Bar Chart */}
-            <div className="md:w-2/3 h-[200px]">
-              <ResponsiveContainer width="100%" height={200}>
+            <div className="md:w-2/3 h-[180px]">
+              <ResponsiveContainer width="100%" height={180}>
                 <BarChart
                   data={[
                     {
@@ -749,7 +752,7 @@ const DashboardHome = () => {
       </div>
 
       {/* Student Feedback */}
-      <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-5">
+      <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-white">Student Feedback</h2>
           {feedbackLoading && (
@@ -757,13 +760,13 @@ const DashboardHome = () => {
           )}
         </div>
 
-        <div className="bg-white/5 rounded-xl p-4 mb-4 border border-white/10">
+        <div className="bg-white/5 rounded-xl p-3 mb-3 border border-white/10">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-300">Overall Rating</div>
             <div className="text-sm text-gray-300">{feedbacks.length} feedback</div>
           </div>
-          <div className="mt-2 flex items-end justify-between">
-            <div className="text-3xl font-semibold text-white">
+          <div className="mt-1.5 flex items-end justify-between">
+            <div className="text-2xl font-semibold text-white">
               ⭐ {overallRating.toFixed(1)} <span className="text-gray-400 text-base">/ 5</span>
             </div>
             <div className="text-xs text-gray-400">
@@ -844,7 +847,7 @@ const DashboardHome = () => {
         )}
 
         {feedbacks.length > 0 && (
-          <div className="mt-5">
+            <div className="mt-4">
             <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
               <div>
                 <h3 className="text-sm font-semibold text-white">Analytics</h3>
@@ -872,12 +875,12 @@ const DashboardHome = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="bg-white/5 border border-white/10 rounded-xl p-3">
                 <h4 className="text-sm text-gray-300 mb-2">
                   Subject Performance
                 </h4>
-                <div className="h-[240px]">
+                <div className="h-[220px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={subjectPerformanceData}>
                       <XAxis
@@ -909,11 +912,11 @@ const DashboardHome = () => {
                 </div>
               </div>
 
-              <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+              <div className="bg-white/5 border border-white/10 rounded-xl p-3">
                 <h4 className="text-sm text-gray-300 mb-2">
                   Overall Rating Distribution
                 </h4>
-                <div className="flex items-center justify-center h-[240px]">
+                <div className="flex items-center justify-center h-[220px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -945,9 +948,9 @@ const DashboardHome = () => {
               </div>
             </div>
 
-            <div className="mt-4 bg-white/5 border border-white/10 rounded-xl p-4">
+            <div className="mt-3 bg-white/5 border border-white/10 rounded-xl p-3 md:col-span-2">
               <h4 className="text-sm text-gray-300 mb-2">Feedback Trend</h4>
-              <div className="h-[240px]">
+              <div className="h-[180px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={feedbackTrendData}>
                     <XAxis
