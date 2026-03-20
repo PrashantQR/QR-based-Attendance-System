@@ -623,49 +623,78 @@ const DashboardHome = () => {
           </div>
         ) : (
           <div>
-            {latestFeedbacks.map((f, idx) => (
-              <div key={`${f.createdAt}-${idx}`} className="bg-white/5 rounded-xl p-4 mb-4 border border-white/10">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-sm font-semibold text-gray-100">
-                    ⭐ {Number(f.averageRating || 0).toFixed(1)}
-                  </div>
-                  <div className="text-xs text-gray-400">
-                    {f.course ? `${f.course} • ` : ''}
-                    {f.createdAt ? new Date(f.createdAt).toLocaleString() : ''}
-                  </div>
-                </div>
+            {latestFeedbacks.map((f, idx) => {
+              const date = f.createdAt ? new Date(f.createdAt) : null;
+              const dateShort = date
+                ? date.toLocaleDateString('en-GB', {
+                    day: '2-digit',
+                    month: 'short'
+                  })
+                : '';
 
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm text-gray-200">
-                  <div>
-                    <div className="text-xs text-gray-400">Teaching</div>
-                    <div className="font-semibold">{f.ratings?.teachingQuality ?? '—'}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-400">Communication</div>
-                    <div className="font-semibold">{f.ratings?.communication ?? '—'}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-400">Interaction</div>
-                    <div className="font-semibold">{f.ratings?.classInteraction ?? '—'}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-400">Knowledge</div>
-                    <div className="font-semibold">{f.ratings?.subjectKnowledge ?? '—'}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-400">Doubt Solving</div>
-                    <div className="font-semibold">{f.ratings?.doubtSolving ?? '—'}</div>
-                  </div>
-                </div>
+              return (
+                <div
+                  key={`${f.createdAt}-${idx}`}
+                  className="bg-[#0f172a] p-4 rounded-lg mb-3 text-sm"
+                >
+                  {/* Top Row */}
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-2">
+                      ⭐{' '}
+                      <span className="font-semibold text-white">
+                        {Number(f.averageRating || 0).toFixed(1)}
+                      </span>
+                    </div>
 
-                {f.comment && String(f.comment).trim() && (
-                  <div className="mt-3 text-sm text-gray-100">
-                    <div className="text-xs text-gray-400 mb-1">Comment</div>
-                    <div className="italic">“{String(f.comment).trim()}”</div>
+                    <div className="text-gray-400 text-xs">
+                      {f.course ? `${f.course} • ` : ''}
+                      {dateShort}
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {/* Ratings Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs text-gray-300">
+                    <div>
+                      <div className="text-gray-400">Teaching:</div>
+                      <b className="text-white">
+                        {f.ratings?.teachingQuality ?? '—'}
+                      </b>
+                    </div>
+                    <div>
+                      <div className="text-gray-400">Communication:</div>
+                      <b className="text-white">
+                        {f.ratings?.communication ?? '—'}
+                      </b>
+                    </div>
+                    <div>
+                      <div className="text-gray-400">Interaction:</div>
+                      <b className="text-white">
+                        {f.ratings?.classInteraction ?? '—'}
+                      </b>
+                    </div>
+                    <div>
+                      <div className="text-gray-400">Knowledge:</div>
+                      <b className="text-white">
+                        {f.ratings?.subjectKnowledge ?? '—'}
+                      </b>
+                    </div>
+                    <div>
+                      <div className="text-gray-400">Doubt Solving:</div>
+                      <b className="text-white">
+                        {f.ratings?.doubtSolving ?? '—'}
+                      </b>
+                    </div>
+                  </div>
+
+                  {/* Comment */}
+                  {f.comment && String(f.comment).trim() && (
+                    <p className="text-gray-400 text-xs mt-2 italic">
+                      “{String(f.comment).trim()}”
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
