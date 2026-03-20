@@ -283,7 +283,7 @@ router.get(
       console.error('Student test result fetch error:', error);
       return res.status(500).json({
         success: false,
-        message: 'An error occurred while fetching test results',
+        message: error?.message || 'An error occurred while fetching test results',
         data: {}
       });
     }
