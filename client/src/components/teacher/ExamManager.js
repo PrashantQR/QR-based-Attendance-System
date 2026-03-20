@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 
 const ExamManager = () => {
-  const { isAuthenticated, loading: authLoading, user } = useAuth();
+  const { loading: authLoading } = useAuth();
   const [subjects, setSubjects] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState('');
   const [subjectsLoading, setSubjectsLoading] = useState(false);
@@ -50,8 +50,12 @@ const ExamManager = () => {
   useEffect(() => {
     const fetchSubjects = async () => {
       if (authLoading) return;
-      if (!isAuthenticated) return;
-      if (user?.role !== 'teacher') return;
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      // Ensure authorization header exists even if AuthContext hasn't finished
+      // updating `isAuthenticated` yet (prevents subject dropdown staying empty).
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
       setSubjectsLoading(true);
       try {
@@ -75,10 +79,7 @@ const ExamManager = () => {
 
     fetchSubjects();
   }, [
-    authLoading,
-    isAuthenticated,
-    user?.role,
-    selectedSubject
+    authLoading
   ]);
 
   useEffect(() => {
