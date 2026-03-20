@@ -822,16 +822,23 @@ const DashboardHome = () => {
                 <h4 className="text-sm text-gray-300 mb-2">
                   Subject Performance
                 </h4>
-                <div className="h-[180px]">
+                <div className="h-[150px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={subjectPerformanceData}>
+                    <BarChart
+                      data={subjectPerformanceData}
+                      layout="vertical"
+                      margin={{ top: 4, right: 8, left: 8, bottom: 4 }}
+                    >
                       <XAxis
-                        dataKey="subject"
+                        type="number"
+                        domain={[0, 5]}
                         stroke="#94a3b8"
                         tick={{ fontSize: 10 }}
                       />
                       <YAxis
-                        domain={[0, 5]}
+                        type="category"
+                        dataKey="subject"
+                        width={80}
                         stroke="#94a3b8"
                         tick={{ fontSize: 10 }}
                       />
@@ -847,7 +854,8 @@ const DashboardHome = () => {
                       <Bar
                         dataKey="rating"
                         fill="#22c55e"
-                        radius={[6, 6, 0, 0]}
+                        radius={[0, 6, 6, 0]}
+                        barSize={12}
                       />
                     </BarChart>
                   </ResponsiveContainer>
