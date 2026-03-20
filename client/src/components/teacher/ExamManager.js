@@ -71,8 +71,8 @@ const ExamManager = () => {
         setSubjects(list);
 
         // Default-select first subject once subjects arrive.
-        if (!selectedSubject && list.length > 0) {
-          setSelectedSubject(String(list[0]._id));
+        if (list.length > 0) {
+          setSelectedSubject((prev) => (prev ? prev : String(list[0]._id)));
         }
       } catch (error) {
         console.error('Fetch teacher subjects error:', error);
