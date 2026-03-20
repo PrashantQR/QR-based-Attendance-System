@@ -28,6 +28,8 @@ const DashboardHome = () => {
   });
   const [loading, setLoading] = useState(true);
   const [selectedSubject, setSelectedSubject] = useState('');
+  const [teacherSubjectOptions, setTeacherSubjectOptions] = useState([]);
+  const [teacherSubjectsLoading, setTeacherSubjectsLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split('T')[0]
   );
@@ -204,12 +206,42 @@ const DashboardHome = () => {
     }
   }, []);
 
+  const subjectOptions = useMemo(() => {
+    if (Array.isArray(user?.subjects) && user.subjects.length > 0) {
+      return user.subjects;
+    }
+    return teacherSubjectOptions;
+  }, [user?.subjects, teacherSubjectOptions]);
+
+  useEffect(() => {
+    const fetchTeacherSubjects = async () => {
+      if (!user?._id || user?.role !== 'teacher') return;
+      if (Array.isArray(user?.subjects) && user.subjects.length > 0) return;
+
+      setTeacherSubjectsLoading(true);
+      try {
+        const res = await api.get('/teacher/subjects');
+        const list = Array.isArray(res.data?.data) ? res.data.data : [];
+        setTeacherSubjectOptions(list.map((s) => s.name));
+      } catch (error) {
+        console.error('Fetch teacher subjects error:', error);
+      } finally {
+        setTeacherSubjectsLoading(false);
+      }
+    };
+
+    fetchTeacherSubjects();
+  }, [user?._id, user?.role, user?.subjects]);
+
   useEffect(() => {
     if (user?.role === 'teacher' && !selectedSubject) {
-      const firstSubject = Array.isArray(user?.subjects) ? user.subjects[0] : '';
+      const firstSubject =
+        subjectOptions && subjectOptions.length
+          ? subjectOptions[0]
+          : '';
       if (firstSubject) setSelectedSubject(firstSubject);
     }
-  }, [user, selectedSubject]);
+  }, [user?.role, selectedSubject, subjectOptions]);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && user?.role === 'teacher') {
@@ -322,12 +354,17 @@ const DashboardHome = () => {
               className="w-full p-2 rounded bg-slate-950 border border-slate-700 text-sm text-gray-100"
             >
               <option value="">Select Subject</option>
-              {Array.isArray(user?.subjects) &&
-                user.subjects.map((subject) => (
+              {subjectOptions && subjectOptions.length ? (
+                subjectOptions.map((subject) => (
                   <option key={subject} value={subject}>
                     {subject}
                   </option>
-                ))}
+                ))
+              ) : (
+                <option value="" disabled>
+                  {teacherSubjectsLoading ? 'Loading…' : 'No subjects'}
+                </option>
+              )}
             </select>
           </div>
           <div>

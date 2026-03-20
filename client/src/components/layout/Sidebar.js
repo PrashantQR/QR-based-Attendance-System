@@ -25,7 +25,7 @@ const Sidebar = ({ isOpen = false, onClose }) => {
 
   // Teacher sidebar
   const teacherMenu = [
-    { to: '/teacher/dashboard', label: 'Dashboard', icon: FaTachometerAlt },
+    { to: '/teacher', label: 'Dashboard', icon: FaTachometerAlt },
     { to: '/teacher/qr-generate', label: 'Generate QR', icon: FaQrcode },
     { to: '/teacher/attendance', label: 'View Attendance', icon: FaClipboardList },
     { to: '/teacher/exams', label: 'Exams', icon: FaClipboardList },

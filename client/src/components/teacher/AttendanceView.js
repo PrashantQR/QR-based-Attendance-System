@@ -24,8 +24,40 @@ const AttendanceView = () => {
   const pageSize = 10;
   const [totalSessions, setTotalSessions] = useState(0);
 
+  const [teacherSubjectOptions, setTeacherSubjectOptions] = useState([]);
+  const [teacherSubjectsLoading, setTeacherSubjectsLoading] = useState(false);
+
+  const subjectOptions = useMemo(() => {
+    if (Array.isArray(user?.subjects) && user.subjects.length > 0) {
+      return user.subjects;
+    }
+    return teacherSubjectOptions;
+  }, [user?.subjects, teacherSubjectOptions]);
+
   const selectedSubjectLabel =
     subjectFilter === 'all' ? 'All Subjects' : subjectFilter;
+
+  useEffect(() => {
+    const fetchTeacherSubjects = async () => {
+      if (user?.role !== 'teacher') return;
+      if (!user?._id) return;
+      if (Array.isArray(user?.subjects) && user.subjects.length > 0) return;
+
+      setTeacherSubjectsLoading(true);
+      try {
+        const res = await api.get('/teacher/subjects');
+        const list = Array.isArray(res.data?.data) ? res.data.data : [];
+        setTeacherSubjectOptions(list.map((s) => s.name));
+      } catch (error) {
+        console.error('Fetch teacher subjects error:', error);
+      } finally {
+        setTeacherSubjectsLoading(false);
+      }
+    };
+
+    fetchTeacherSubjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?._id, user?.role, user?.subjects]);
 
   const fetchAttendance = useCallback(async () => {
     try {
@@ -237,8 +269,8 @@ const AttendanceView = () => {
           </span>
           <span className="px-3 py-1 rounded-full bg-slate-900/80 border border-slate-600 text-slate-200">
             Subjects:{' '}
-            {Array.isArray(user?.subjects) && user.subjects.length > 0
-              ? user.subjects.join(', ')
+            {subjectOptions && subjectOptions.length > 0
+              ? subjectOptions.join(', ')
               : 'N/A'}
           </span>
         </div>
@@ -279,12 +311,17 @@ const AttendanceView = () => {
               onChange={(e) => setSubjectFilter(e.target.value)}
             >
               <option value="all">All Subjects</option>
-              {Array.isArray(user?.subjects) &&
-                user.subjects.map((subject) => (
+              {subjectOptions && subjectOptions.length ? (
+                subjectOptions.map((subject) => (
                   <option key={subject} value={subject}>
                     {subject}
                   </option>
-                ))}
+                ))
+              ) : (
+                <option value="all" disabled>
+                  {teacherSubjectsLoading ? 'Loading…' : 'No subjects'}
+                </option>
+              )}
             </select>
           </div>
           <div>
