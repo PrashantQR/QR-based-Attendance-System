@@ -62,12 +62,22 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary via-secondary to-black px-4">
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden px-4">
+      {/* Base gradient + slight backdrop blur for a calmer, more professional look */}
+      <div
+        className="absolute inset-0 bg-gradient-to-br from-primary via-secondary to-black"
+        aria-hidden
+      />
+      <div
+        className="absolute inset-0 backdrop-blur-[3px] bg-black/15"
+        aria-hidden
+      />
+
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="w-full max-w-md bg-white/10 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-soft-glass p-6 md:p-8"
+        className="relative z-10 w-full max-w-md bg-white/10 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-lg shadow-black/10 p-6 md:p-8"
       >
         <div className="text-center mb-6">
           <h2 className="text-2xl md:text-3xl font-semibold text-white mb-1">Welcome back</h2>
@@ -80,8 +90,8 @@ const Login = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-1.5">
             <label htmlFor="email" className="block text-xs font-medium text-gray-300">
               Email Address
             </label>
@@ -102,7 +112,7 @@ const Login = () => {
             </div>
           </div>
 
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <label htmlFor="password" className="block text-xs font-medium text-gray-300">
               Password
             </label>
@@ -133,7 +143,7 @@ const Login = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full inline-flex items-center justify-center rounded-full bg-accent text-sm font-semibold text-secondary py-2.5 mt-2 hover:bg-emerald-400 transition shadow-soft-glass disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full inline-flex items-center justify-center rounded-full bg-accent text-sm font-semibold text-secondary py-2.5 mt-1 hover:bg-emerald-400 transition shadow-md shadow-black/10 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? 'Logging in...' : 'Login'}
           </button>
