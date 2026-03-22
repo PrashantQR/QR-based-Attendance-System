@@ -73,6 +73,6 @@ Then rebuild (`npm run build`) and sync Capacitor.
 | Issue | What to try |
 |--------|-------------|
 | White screen in APK | Run `npm run build`, then `npx cap sync android`; check Logcat for 404s on `/static/...` |
-| **“Server not responding” on login (APK)** | The WebView sends `Origin: https://localhost` (or `capacitor://localhost` on iOS). The API **must allow those origins in CORS**. This repo’s `server/index.js` allows Capacitor/local WebView origins—**redeploy the backend** after updating. If you use a forked API, add the same CORS rules there. |
+| **“Server not responding” on login (APK)** | 1) **Redeploy the API** so CORS includes Capacitor (`https://localhost`, `capacitor://`, …) — see `server/index.js`. 2) **Rebuild the APK** after pulling: `npm run cap:sync` — the client must use an absolute API URL in the WebView; `client/src/utils/api.js` detects `localhost` / native shell so requests go to `https://qr-based-attendance.onrender.com/api`, not `https://localhost/api`. 3) If it still fails, set `REACT_APP_API_BASE_URL` in `.env.production` and rebuild. |
 | API errors / network | Set `REACT_APP_API_BASE_URL`, rebuild; ensure phone has internet; Render free tier may cold-start (~30–60s first request). |
 | Gradle / SDK errors | Open **SDK Manager** in Android Studio; install recommended SDK + build-tools |
