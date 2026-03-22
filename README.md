@@ -49,6 +49,17 @@ A modern, web-based attendance management system that uses QR codes for seamless
 - **Bootstrap** - CSS framework
 - **Chart.js** - Data visualization
 
+## 📱 Android APK (mobile app)
+
+The React client can be wrapped as a native Android app using **Capacitor**. See **[docs/ANDROID_APK.md](docs/ANDROID_APK.md)** for prerequisites (Android Studio), one-time setup, and how to build a debug or signed APK.
+
+Quick commands (from the `client` folder after dependencies are installed):
+
+```bash
+npm run cap:sync    # build web app + sync into android/
+npm run cap:open    # open Android Studio to build the APK
+```
+
 ## 📋 Prerequisites
 
 Before running this application, make sure you have the following installed:

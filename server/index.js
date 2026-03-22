@@ -95,11 +95,30 @@ const allowedOrigins = new Set(
   ].filter(Boolean)
 );
 
+function isCapacitorOrLocalWebViewOrigin(origin) {
+  // Capacitor / Ionic apps load from a synthetic origin (not your deployed site URL).
+  // Android (scheme https in capacitor.config): https://localhost
+  // iOS: capacitor://localhost
+  try {
+    if (origin.startsWith('capacitor://') || origin.startsWith('ionic://')) {
+      return true;
+    }
+    const u = new URL(origin);
+    if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') {
+      return true;
+    }
+  } catch (_) {
+    /* ignore */
+  }
+  return false;
+}
+
 const corsOptions = {
   origin(origin, cb) {
     // allow non-browser clients (curl, Render health checks, server-to-server)
     if (!origin) return cb(null, true);
     if (allowedOrigins.has(origin)) return cb(null, true);
+    if (isCapacitorOrLocalWebViewOrigin(origin)) return cb(null, true);
 
     // In case Render generates a new subdomain after redeploy,
     // allow any onrender.com / vercel.app origin. This prevents

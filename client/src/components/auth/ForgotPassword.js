@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { FaEnvelope, FaArrowLeft } from 'react-icons/fa';
 import { motion } from 'framer-motion';
@@ -15,7 +15,7 @@ const ForgotPassword = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post('/api/auth/forgot-password', { email });
+      const response = await api.post('/auth/forgot-password', { email });
       
       if (response.data.success) {
         setEmailSent(true);

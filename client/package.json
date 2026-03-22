@@ -2,7 +2,9 @@
   "name": "qr-attendance-client",
   "version": "1.0.0",
   "private": true,
+  "homepage": ".",
   "dependencies": {
+    "@capacitor/core": "^6.2.0",
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/react": "^13.3.0",
     "@testing-library/user-event": "^13.5.0",
@@ -32,11 +34,17 @@
     "tailwindcss": "^3.4.10",
     "web-vitals": "^2.1.4"
   },
+  "devDependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/cli": "^6.2.0"
+  },
   "scripts": {
     "start": "react-scripts start",
     "build": "cross-env NODE_OPTIONS=--openssl-legacy-provider react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "cap:sync": "npm run build && npx cap sync android",
+    "cap:open": "npx cap open android"
   },
   "engines": {
     "node": "20.x"

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { FaLock, FaEye, FaEyeSlash, FaCheck } from 'react-icons/fa';
 import { motion } from 'framer-motion';
@@ -22,7 +22,7 @@ const ResetPassword = () => {
 
   const validateToken = useCallback(async () => {
     try {
-      const response = await axios.get(`/api/auth/reset-password/${token}`);
+      const response = await api.get(`/auth/reset-password/${token}`);
       if (response.data.success) {
         setTokenValid(true);
       }
@@ -64,7 +64,7 @@ const ResetPassword = () => {
     }
 
     try {
-      const response = await axios.post(`/api/auth/reset-password/${token}`, {
+      const response = await api.post(`/auth/reset-password/${token}`, {
         password: formData.password
       });
 
