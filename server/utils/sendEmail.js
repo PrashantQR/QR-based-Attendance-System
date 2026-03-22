@@ -3,26 +3,63 @@ const nodemailer = require('nodemailer');
 function isSmtpConfigured() {
   const pass = (process.env.SMTP_PASSWORD || '').trim();
   const user = (process.env.SMTP_EMAIL || '').trim();
-  const host = (process.env.SMTP_HOST || '').trim();
-  const portRaw = process.env.SMTP_PORT;
-  const port = Number(portRaw);
-  if (!user || !pass || !host) return false;
-  if (!Number.isFinite(port) || port <= 0) return false;
+  if (!user || !pass) return false;
   if (pass === 'your-app-password-here' || pass === 'your-app-password') return false;
+  const mode = (process.env.SMTP_SERVICE || 'gmail').toLowerCase();
+  if (mode === 'smtp' || mode === 'custom') {
+    if (!(process.env.SMTP_HOST || '').trim()) return false;
+  }
   return true;
+}
+
+/**
+ * Gmail `service` mode uses nodemailer's well-known settings (often works on Render when raw host:587 times out).
+ * Set SMTP_SERVICE=smtp to use SMTP_HOST / SMTP_PORT instead (e.g. non-Gmail providers).
+ */
+function createTransporter() {
+  const user = process.env.SMTP_EMAIL;
+  const pass = process.env.SMTP_PASSWORD;
+  const mode = (process.env.SMTP_SERVICE || 'gmail').toLowerCase();
+
+  if (mode === 'gmail') {
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user,
+        pass
+      }
+    });
+  }
+
+  // Custom SMTP (host/port + TLS) — fallback if you need explicit host
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: 587,
+    secure: false,
+    requireTLS: true,
+    auth: {
+      user,
+      pass
+    },
+    tls: {
+      rejectUnauthorized: false
+    }
+  });
 }
 
 const sendEmail = async (options) => {
   if (!isSmtpConfigured()) {
     const err = new Error(
-      'SMTP is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_EMAIL, and SMTP_PASSWORD (e.g. Gmail App Password) on the server.'
+      'SMTP is not configured. Set SMTP_EMAIL and SMTP_PASSWORD (e.g. Gmail App Password). Optional: SMTP_SERVICE=gmail (default) or SMTP_SERVICE=smtp with SMTP_HOST.'
     );
     err.code = 'SMTP_NOT_CONFIGURED';
     console.error('[sendEmail]', err.message);
     throw err;
   }
 
+  const mode = (process.env.SMTP_SERVICE || 'gmail').toLowerCase();
   console.log('Email configuration:', {
+    smtpService: mode,
     host: process.env.SMTP_HOST,
     port: process.env.SMTP_PORT,
     user: process.env.SMTP_EMAIL,
@@ -30,16 +67,7 @@ const sendEmail = async (options) => {
     fromEmail: process.env.FROM_EMAIL
   });
 
-  // Use env vars from Render / config.env (set SMTP_HOST, SMTP_PORT, SMTP_EMAIL, SMTP_PASSWORD)
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: false,
-    auth: {
-      user: process.env.SMTP_EMAIL,
-      pass: process.env.SMTP_PASSWORD
-    }
-  });
+  const transporter = createTransporter();
 
   const message = {
     from: `${process.env.FROM_NAME || 'QR Attendance System'} <${process.env.FROM_EMAIL || process.env.SMTP_EMAIL}>`,
