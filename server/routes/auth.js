@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { protect, authorize } = require('../middleware/auth');
 const sendEmail = require('../utils/sendEmail');
+const { getPublicAppBaseUrl } = require('../utils/publicAppUrl');
 const crypto = require('crypto');
 const { getPasswordResetEmailTemplate } = require('../utils/emailTemplates');
 
@@ -437,8 +438,8 @@ router.post('/forgot-password', async (req, res) => {
     const resetToken = user.getResetPasswordToken();
     await user.save({ validateBeforeSave: false });
 
-    // Create reset url
-    const resetUrl = `${req.protocol}://${req.get('host')}/reset-password/${resetToken}`;
+    // Link must open the deployed web app (same host as API on Render, or FRONTEND_URL origin)
+    const resetUrl = `${getPublicAppBaseUrl(req)}/reset-password/${resetToken}`;
 
     const htmlMessage = getPasswordResetEmailTemplate(resetUrl, user.name);
 
@@ -460,9 +461,22 @@ router.post('/forgot-password', async (req, res) => {
 
       await user.save({ validateBeforeSave: false });
 
+      console.error('[forgot-password] sendEmail failed:', err?.code || err?.message, err);
+
+      if (err?.code === 'SMTP_NOT_CONFIGURED') {
+        return res.status(503).json({
+          error: 'Email service unavailable',
+          message:
+            'Password reset email is not configured on the server. Ask an admin to set SMTP settings (e.g. on Render: SMTP_EMAIL, SMTP_PASSWORD).'
+        });
+      }
+
       return res.status(500).json({
         error: 'Email could not be sent',
-        message: 'Email could not be sent'
+        message:
+          process.env.NODE_ENV === 'development'
+            ? err?.message || 'Email could not be sent'
+            : 'Email could not be sent. Check server email (SMTP) settings.'
       });
     }
   } catch (error) {
